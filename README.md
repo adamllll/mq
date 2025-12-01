@@ -1,5 +1,7 @@
 # MQ - Message Queue Implementation
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 A lightweight message queue implementation inspired by RabbitMQ, built with Java and Spring Boot.
 
 ## Tech Stack

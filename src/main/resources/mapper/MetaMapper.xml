@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.adam.mq.mqserver.mapper.MetaMapper">
+    <update id="createExchangeTable">
+        CREATE TABLE IF NOT EXISTS exchange (
+        name varchar(50) primary key,
+        type int,
+        durable BOOLEAN,
+        autoDelete BOOLEAN,
+        arguments varchar(1024)
+        );
+    </update>
+
+    <update id="createQueueTable">
+        CREATE TABLE IF NOT EXISTS queue (
+        name varchar(50) primary key,
+        durable BOOLEAN,
+        exclusive BOOLEAN,
+        autoDelete BOOLEAN,
+        arguments varchar(1024)
+        );
+    </update>
+
+    <update id="createBindingTable">
+        CREATE TABLE IF NOT EXISTS binding (
+        exchangerName varchar(50),
+        queueName varchar(50),
+        bindingKey varchar(256)
+        );
+    </update>
+    
+    <insert id="insertExchange" parameterType="org.adam.mq.mqserver.core.Exchange">
+        insert into exchange
+        values (#{name},
+                #{type},
+                #{durable},
+                #{autoDelete},
+                #{arguments}
+        );
+    </insert>
+    <delete id="deleteExchange" parameterType="String">
+        delete from exchange where name = #{exchangeName};
+    </delete>
+    <select id="selectAllExchanges" resultType="org.adam.mq.mqserver.core.Exchange">
+        select *
+        from exchange;
+    </select>
+    
+    <insert id="insertQueue" parameterType="org.adam.mq.mqserver.core.MSGQueue">
+        insert into queue
+        values (#{name},
+                #{durable},
+                #{exclusive},
+                #{autoDelete},
+                #{arguments}); // Mybatis看到这个就会通过getArguments方法获取到这个参数的内容,此处数据中期望的类型是String,此处也就需要让getArguments能够得到String
+    </insert>
+    <delete id="deleteQueue" parameterType="String">
+        delete
+        from queue
+        where name = #{queueName};
+    </delete>
+    <select id="selectAllQueues" resultType="org.adam.mq.mqserver.core.MSGQueue">
+        select *
+        from queue;
+    </select>
+
+    <insert id="insertBinding" parameterType="org.adam.mq.mqserver.core.Binding">
+        insert into binding
+        values (#{exchangeName},
+                #{queueName},
+                #{bindingKey});
+    </insert>
+    <delete id="deleteBinding" parameterType="org.adam.mq.mqserver.core.Binding">
+        delete
+        from binding
+        where exchangerName = #{exchangeName}
+          and queueName = #{queueName}
+          and bindingKey = #{bindingKey};
+    </delete>
+    <select id="selectAllBindings" resultType="org.adam.mq.mqserver.core.Binding">
+        select *
+        from binding;
+    </select>
+
+</mapper>

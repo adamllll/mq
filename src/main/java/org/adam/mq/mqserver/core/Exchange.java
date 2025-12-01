@@ -1,5 +1,8 @@
 package org.adam.mq.mqserver.core;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -17,7 +20,8 @@ public class Exchange {
     // 这个属性暂时没有被使用到（后续的代码并没有真的实现）
     private boolean autoDelete = false;
     // 交换机的附加属性(参数选项)，可以存储一些自定义的信息(一样没有被使用到，后续的代码并没有真的实现)
-    private Map<String, Object> augments = new HashMap<>();
+   // 为了把这个 augments 存到数据库中，就需要把这个map转成json格式的字符串
+    private Map<String, Object> arguments = new HashMap<>();
 
     public String getName() {
         return name;
@@ -51,11 +55,29 @@ public class Exchange {
         this.autoDelete = autoDelete;
     }
 
-    public Map<String, Object> getAugments() {
-        return augments;
+    public String getArguments() {
+        // 把 augments 从 Map 转成 String(JSON)
+        ObjectMapper objectMapper = new ObjectMapper();
+        try {
+            return objectMapper.writeValueAsString(arguments);
+        } catch (Exception e) {
+            e.printStackTrace();
+            // 如果代码真异常了，就返回一个空的json对象
+            return "{}";
+        }
     }
 
-    public void setAugments(Map<String, Object> augments) {
-        this.augments = augments;
+    // 从数据库度数据之后，构造 Exchange对象，会自动调用到
+    public void setArguments(String argumentsJson) {
+        // 把参数中的 argumentsJson 按照 JSON格式解析转成上述的 Map对象
+        ObjectMapper objectMapper = new ObjectMapper();
+        try {
+            // 注意这里的 TypeReference 用法, 用于告诉 ObjectMapper 目标类型是 Map<String, Object>
+           this.arguments =  objectMapper.readValue(argumentsJson, new TypeReference<HashMap<String, Object>>() {});
+        } catch (Exception e) {
+            e.printStackTrace();
+            // 如果代码真异常了，就把 augments 设置成一个空的map
+            this.arguments = new HashMap<>();
+        }
     }
 }

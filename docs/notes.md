@@ -220,6 +220,9 @@ Connection 可以理解成一根网线. Channel 则是网线里具体的线缆.
 ## 三. 模块划分
 
 ![image_8_6.png](assets/image_8_6.png)
+
+![image-20251201160745031](./notes.assets/image-20251201160745031.png)
+
 可以看到, 像 交换机, 队列, 绑定, 消息, 这几个核心概念在内存和硬盘中都是存储了的.
 
 其中内存为主, 是用来实现消息转发的关键; 硬盘为辅, 主要是保证服务器重启之后, 之前的信息都可以正常保持.
@@ -437,7 +440,7 @@ public class BasicProperties implements Serializable {
 
 - createMessageWithId  相当于一个工厂方法, 用来创建一个 Message 实例. messageId 通过UUID 的方式生成.
 
-![image-20251130195949577](./Java%20-%20%E4%BB%BF%20RabbitMQ%20%E7%9A%84%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97.assets/image-20251130195949577.png)
+![image-20251201160629049](./notes.assets/image-20251201160629049.png)
 
 ## 六. 数据库设计
 
@@ -515,9 +518,7 @@ public interface MetaMapper {
 }
 ```
 
-本身 MyBatis 针对 MySQL / Oracle 支持执行多个 SQL 语句的, 但是针对 SQLite 是不支持的, 只能写
-
-成多个方法.
+本身 MyBatis 针对 MySQL / Oracle 支持执行多个 SQL 语句的, 但是针对 SQLite 是不支持的, 只能写成多个方法.
 
 ```xml
 <update id="createExchangeTable">
@@ -587,6 +588,10 @@ void insertBinding(Binding binding);
 
 void deleteBinding(Binding binding);
 
+> 对于**交换机**和**队列**这两个表，由于使用name作为主键，直接按照name进行删除即可
+>
+> 对于**绑定**来说此时没有主键，删除操作其实是针对 exchangeName和 queueName两个维度进行筛选
+
 给 MetaMapper  中添加
 
 ```xml
@@ -644,6 +649,8 @@ parameterType="com.example.java_message_queue.mqserver.core.Binding">
 mqserver.datacenter.DataBaseManager
 
 ### 1) 创建 DataBaseManager 类
+
+![image-20251201230139877](./notes.assets/image-20251201230139877.png)
 
 通过这个类来封装针对数据库的操作.
 

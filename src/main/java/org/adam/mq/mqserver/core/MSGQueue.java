@@ -1,5 +1,8 @@
 package org.adam.mq.mqserver.core;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -18,7 +21,7 @@ public class MSGQueue {
     // 表示队列在没有消费者时是否自动删除,true表示自动删除，false表示不自动删除
     private boolean autoDelete = false;
     // 用于存储队列的扩展属性，可以包含自定义的键值对
-    private Map<String, Object> augments = new HashMap<>();
+    private Map<String, Object> arguments = new HashMap<>();
 
     public String getName() {
         return name;
@@ -52,11 +55,22 @@ public class MSGQueue {
         this.autoDelete = autoDelete;
     }
 
-    public Map<String, Object> getAugments() {
-        return augments;
+    public String getArguments() {
+        ObjectMapper objectMapper = new ObjectMapper();
+        try {
+            return objectMapper.writeValueAsString(arguments);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "{}";
+        }
     }
-
-    public void setAugments(Map<String, Object> augments) {
-        this.augments = augments;
+    public void setArguments(String argumentsJson) {
+        ObjectMapper objectMapper = new ObjectMapper();
+        try {
+            this.arguments = objectMapper.readValue(argumentsJson, new TypeReference<Map<String, Object>>() {});
+        } catch (Exception e) {
+            e.printStackTrace();
+            this.arguments = new HashMap<>();
+        }
     }
 }
