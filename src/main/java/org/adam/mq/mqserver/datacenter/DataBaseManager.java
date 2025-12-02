@@ -13,7 +13,7 @@ import java.util.List;
 /**
  * 通过这个类来整合数据库的各种操作
  */
-public class DataBaseManger {
+public class DataBaseManager {
     // 要做的是从 Spring中拿到现成的对象
     private MetaMapper metaMapper;
 
@@ -30,7 +30,17 @@ public class DataBaseManger {
             insertDefaultData();
             System.out.println("[DBManager] Database and tables created, default data inserted.");
         }else {
-            System.out.println("DBManager] Database and tables already exists.");
+            System.out.println("[DBManager] Database and tables already exists.");
+        }
+    }
+
+    public void deleteDB() {
+        File file = new File("./data/meta.db");
+        if (file.exists()) {
+            file.delete();
+            System.out.println("[DBManager] Database file deleted successfully.");
+        } else {
+            System.out.println("[DBManager] Database file does not exist.");
         }
     }
 
@@ -47,7 +57,7 @@ public class DataBaseManger {
         metaMapper.createExchangeTable();
         metaMapper.createQueueTable();
         metaMapper.createBindingTable();
-        System.out.println("DBManager] Tables created successfully.");
+        System.out.println("[DBManager] Tables created successfully.");
     }
 
     // 插入默认数据
@@ -61,7 +71,7 @@ public class DataBaseManger {
         exchange.setDurable(true);
         exchange.setAutoDelete(false);
         metaMapper.insertExchange(exchange);
-        System.out.println("DBManager] Default exchange inserted successfully.");
+        System.out.println("[DBManager] Default exchange inserted successfully.");
     }
 
     // 把其他的数据库操作，比如增删改查的方法，也放到这个类中来进行统一管理
