@@ -25,7 +25,7 @@
 
     <update id="createBindingTable">
         CREATE TABLE IF NOT EXISTS binding (
-        exchangerName varchar(50),
+        exchangeName varchar(50),
         queueName varchar(50),
         bindingKey varchar(256)
         );
@@ -75,7 +75,7 @@
     <delete id="deleteBinding" parameterType="org.adam.mq.mqserver.core.Binding">
         delete
         from binding
-        where exchangerName = #{exchangeName}
+        where exchangeName = #{exchangeName}
           and queueName = #{queueName}
           and bindingKey = #{bindingKey};
     </delete>

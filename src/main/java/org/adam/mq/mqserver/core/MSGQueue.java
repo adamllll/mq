@@ -73,4 +73,10 @@ public class MSGQueue {
             this.arguments = new HashMap<>();
         }
     }
+    public Object getArguments(String key) {
+        return this.arguments.get(key);
+    }
+    public void setArguments(String key, Object value) {
+        this.arguments.put(key, value);
+    }
 }

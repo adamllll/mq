@@ -25,6 +25,9 @@ public class DataBaseManager {
         metaMapper = MqApplication.context.getBean(MetaMapper.class);
         if (!checkDBExists()) {
             // 如果数据库不存在，则创建数据库和表，并插入默认数据
+            // 先创建有个data目录
+            File dataDir = new File("./data");
+            dataDir.mkdirs();
             createTable();
             // 插入默认数据
             insertDefaultData();
@@ -41,6 +44,13 @@ public class DataBaseManager {
             System.out.println("[DBManager] Database file deleted successfully.");
         } else {
             System.out.println("[DBManager] Database file does not exist.");
+        }
+        File dataDir = new File("./data");
+        if (dataDir.exists()) {
+            dataDir.delete(); // delete() 只能删除空目录
+            System.out.println("[DBManager] Data directory deleted successfully.");
+        }else  {
+            System.out.println("[DBManager] Data directory does not exist.");
         }
     }
 

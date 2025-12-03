@@ -55,6 +55,7 @@ public class Exchange {
         this.autoDelete = autoDelete;
     }
 
+    // 这里的get和set用于和数据库交互
     public String getArguments() {
         // 把 augments 从 Map 转成 String(JSON)
         ObjectMapper objectMapper = new ObjectMapper();
@@ -79,5 +80,14 @@ public class Exchange {
             // 如果代码真异常了，就把 augments 设置成一个空的map
             this.arguments = new HashMap<>();
         }
+    }
+
+    // 针对argument再提供一组 getter setter，用来更方便的去获取/设置这里的键值对
+    // 这一组方法不会被数据库操作调用到，主要在Java内部的代码使用（测试）
+    public Object getArguments(String key) {
+        return arguments.get(key);
+    }
+    public void setArguments(String key, Object value) {
+        arguments.put(key, value);
     }
 }
