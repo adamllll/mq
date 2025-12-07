@@ -1493,11 +1493,18 @@ private boolean checkFilesExists(String queueName) {
 
 实现消息对象序列化/反序列化
 
-Message 对象需要转成二进制写入文件. 并且也需要把文件中的二进制读出来解析成 Message 对象. 此
+Message 对象需要转成二进制写入文件. 并且也需要把文件中的二进制读出来解析成 Message 对象. 此处针对这里的逻辑进行封装.
 
-处针对这里的逻辑进行封装.
+> 这是由于Message里面存储的body部分是二进制数据，不方便使用JSON进行序列化，JSON序列化的结果是文本数据，无法存储二进制
+>
+> - JSON格式中有很多特殊符号 ,:"{} 这些符号会影响JSON格式的解析，如果存文本，那么键值对中就不会包含上述特殊符号
+> - 如果存二进制那就存在不确定的情况，如果某一个二进制字节正好就好上述特殊符号的ASCII码一样了，此时就会引起JSON解析的格式错误
+>   - 如果实在要使用JSON表示二进制数据那就可以针对二进制数据进行base64编码(base64作用就是用4个字节，表示3个字节的信息,会保证4个字节都是使用文本字符【相当于把二进制数据转成文本了】)
+>     - 但是base64这种方案效率低，有额外的转码开销，同时还会使空间变大
 
 创建 common.BinaryTool
+
+> 针对于二进制序列化此处使用Java标准库中的：ObjectInputStream 和 OBJectOutputStream
 
 ```java
 public class BinaryTool {
