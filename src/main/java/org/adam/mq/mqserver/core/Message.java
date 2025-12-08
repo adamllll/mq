@@ -10,6 +10,9 @@ import java.util.UUID;
  * 此处使用 标准库自带的 序列化机制 来实现
  */
 public class Message implements Serializable {
+    // 为了让这个类支持序列化，需要定义一个 serialVersionUID,用来记录类的版本信息
+    private static final long serialVersionUID = 1L;
+
     // 这两个属性是消息的基本属性和消息体
     private BasicProperties basicProperties = new BasicProperties();
     private byte[] body;

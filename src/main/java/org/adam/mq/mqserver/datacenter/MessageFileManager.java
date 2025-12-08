@@ -1,5 +1,10 @@
 package org.adam.mq.mqserver.datacenter;
 
+import org.adam.mq.common.BinaryTool;
+import org.adam.mq.common.MqException;
+import org.adam.mq.mqserver.core.MSGQueue;
+import org.adam.mq.mqserver.core.Message;
+
 import java.io.*;
 import java.util.Scanner;
 
@@ -126,6 +131,21 @@ public class MessageFileManager {
             return false;
         }
         return true;
+    }
+    // 这个方法用来把一个新的消息放入到指定队列的消息文件中
+    // queuem: 消息队列对象(要把消息写入的队列), message: 要存储的消息对象(要写的消息)
+    public void sendMessage(MSGQueue queuem, Message message) throws MqException,IOException {
+        // 1.检查一下当前要写入的队列对应的文件是否存在
+        if (!checkFilesExists(queuem.getName())) {
+            throw new MqException("[MessageFileManager] 消息队列对应的文件不存在！queueName= " + queuem.getName());
+        }
+
+        // 2.把 Message 对象进行序列化，转成二进制的字节数组
+        byte[] messageBinary = BinaryTool.toBytes(message);
+
+        // 3.先获取当前队列数据文件的长度，用来计算新消息的写入位置(计算出该 Message的offsetBeg和offsetEnd)
+        // 把新的 Message数据，写入到队列数据文件的末尾，此时Message对象的offsetBeg就是文件当前的长度 + 4
+        // offsetEnd就是当前文件长度 + 4 + messageBinary.length(message自身长度)
     }
 
 }
