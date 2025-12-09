@@ -1634,6 +1634,8 @@ DataOutputStream(outputStream);
 
 - 考虑线程安全, 按照队列维度进行加锁.
 
+![image-20251209164644120](./notes.assets/image-20251209164644120.png)
+
 - 使用 DataOutputStream 进行二进制写操作. 比原生 OutputStream 要方便.
 
 - 需要记录 Message 对象在文件中的偏移量. 后续的删除操作依赖这个偏移量定位到消息. offsetBeg
@@ -1724,15 +1726,15 @@ message.getOffsetBeg())];
 
 - 使用 RandomAccessFile 来随机访问到文件的内容.
 
-- 根据 Message 中的 offsetBeg 和 offsetEnd 定位到消息在文件中的位置. 通过
-
-randomAccessFile.seek 操作文件指针偏移过去. 再读取.
+- 根据 Message 中的 offsetBeg 和 offsetEnd 定位到消息在文件中的位置. 通过randomAccessFile.seek 操作文件指针偏移过去. 再读取.
 
 - 读出的结果解析成 Message 对象, 修改 isValid 字段, 再重新写回文件. 注意写的时候要重新设定文
 
 件指针的位置. 文件指针会随着上述的读操作产生改变.
 
 - 最后, 要记得更新统计文件, 把合法消息 - 1.
+
+![image-20251209211200976](./notes.assets/image-20251209211200976.png)
 
 实现消息加载
 
