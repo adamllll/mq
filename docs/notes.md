@@ -1743,7 +1743,7 @@ message.getOffsetBeg())];
 // 从消息数据文件中读取出所有消息
 
 ```java
-public LinkedList<Message> loadAllMessageFromQueue(String queueName) throws
+offsetEnd) 是消息体public LinkedList<Message> loadAllMessageFromQueue(String queueName) throws
 
 MqException, IOException, ClassNotFoundException {
 
@@ -1771,9 +1771,7 @@ FileInputStream(getQueueDataPath(queueName))) {
 
             if (messageSize != actualSize) {
 
-                throw new MqException("[MessageFileManager] 文件格式错误!
-
-queueName=" + queueName);
+                throw new MqException("[MessageFileManager] 文件格式错误! queueName=" + queueName);
 
            }
 
@@ -1795,32 +1793,25 @@ queueName=" + queueName);
 
             message.setOffsetEnd(currentOffset + 4 + messageSize);
 
-            // 每个消息, 开头 4 个字节保存的是消息的长度. 接下来 [offsetBeg,
-```
+            // 每个消息, 开头 4 个字节保存的是消息的长度. 接下来 [offsetBeg,offsetEnd) 是消息体
+        currentOffset += 4 + messageSize;
+        messages.add(message);
 
-offsetEnd) 是消息体
+    }
 
-            currentOffset += 4 + messageSize;
-    
-            messages.add(message);
-    
-        }
-    
-    } catch (EOFException e) {
-    
-       // 数据读取完毕, 循环正常退出!
-    
-        System.out.println("[MessageFileManager] 恢复 Message 数据完成!");
+} catch (EOFException e) {
 
-   }
+   // 数据读取完毕, 循环正常退出!
+
+    System.out.println("[MessageFileManager] 恢复 Message 数据完成!");
+       }
 
    return messages;
 
 }
+```
 
-- 使用 DataInputStream 读取数据. 先读 4 个字节为消息的长度, 然后再按照这个长度来读取实际消
-
-息内容.
+- 使用 DataInputStream 读取数据. 先读 4 个字节为消息的长度, 然后再按照这个长度来读取实际消息内容.
 
 - 读取完毕之后, 转换成 Message 对象.
 
@@ -1910,92 +1901,74 @@ ClassNotFoundException {
 
         if (queueDataNew.exists()) {
 
-            throw new MqException("[MessageFileManager] gc 时发现队列新数据文件已
-```
+            throw new MqException("[MessageFileManager] gc 时发现队列新数据文件已经存在! queueName=" + queue.getName());
+               }
 
-经存在! queueName=" + queue.getName());
+   boolean ok = queueDataNew.createNewFile();
 
-       }
-    
-       boolean ok = queueDataNew.createNewFile();
-    
-       if (!ok) {
-    
-           throw new IOException("创建文件失败! queueDataNew=" +
+   if (!ok) {
 
-queueDataNew.getAbsolutePath());
+       throw new IOException("创建文件失败! queueDataNew=" +queueDataNew.getAbsolutePath());
+          }
 
-       }
-    
-       // 2. 遍历旧文件, 读取出每个对象 (只保留有效消息)
-    
-        List<Message> messageList = loadAllMessageFromQueue(queue.getName());
-    
-        // 3. 把有效消息写入到新的文件中.
-    
-        try (OutputStream outputStream = new FileOutputStream(queueDataNew)) {
-    
-            DataOutputStream dataOutputStream = new
+   // 2. 遍历旧文件, 读取出每个对象 (只保留有效消息)
 
-DataOutputStream(outputStream);
+    List<Message> messageList = loadAllMessageFromQueue(queue.getName());
 
-            for (Message message : messageList) {
-    
-                byte[] buffer = BinaryTool.toBytes(message);
-    
-                dataOutputStream.writeInt(buffer.length);
-    
-                dataOutputStream.write(buffer);
-    
-            }
-    
+    // 3. 把有效消息写入到新的文件中.
+
+    try (OutputStream outputStream = new FileOutputStream(queueDataNew)) {
+
+        DataOutputStream dataOutputStream = new DataOutputStream(outputStream);
+                for (Message message : messageList) {
+
+            byte[] buffer = BinaryTool.toBytes(message);
+
+            dataOutputStream.writeInt(buffer.length);
+
+            dataOutputStream.write(buffer);
+
         }
-    
-        // 4. 删除 queue_data.txt, 把 queue_data_new.txt 重命名为 queue_data
-    
-        File queueDataOld = new File(getQueueDataPath(queue.getName()));
-    
-        ok = queueDataOld.delete();
-    
-        if (!ok) {
-    
-            throw new IOException("删除文件失败! queueDataOld=" +
 
-queueDataOld.getAbsolutePath());
+    }
 
-       }
-    
-       ok = queueDataNew.renameTo(queueDataOld);
-    
-       if (!ok) {
-    
-           throw new IOException("文件重命名失败! queueDataOld=" +
+    // 4. 删除 queue_data.txt, 把 queue_data_new.txt 重命名为 queue_data
 
-queueDataOld.getAbsolutePath() +
+    File queueDataOld = new File(getQueueDataPath(queue.getName()));
 
-                   ", queueDataNew=" + queueDataNew.getAbsolutePath());
-    
-       }
-    
-       // 5. 更新统计文件
-    
-        Stat stat = readStat(queue.getName());
-    
-        stat.validCount = messageList.size();
-    
-        stat.totalCount = messageList.size();
-    
-        writeStat(queue.getName(), stat);
-    
-       long gcEnd = System.currentTimeMillis();
-    
-       System.out.println("[MessageFileManager] gc 执行完毕! queueName=" +
+    ok = queueDataOld.delete();
 
-queue.getName() + ", time=" + (gcEnd - gcBeg) + "ms");
+    if (!ok) {
+
+        throw new IOException("删除文件失败!queueDataOld="+queueDataOld.getAbsolutePath());
+           }
+
+   ok = queueDataNew.renameTo(queueDataOld);
+
+   if (!ok) {
+
+       throw new IOException("文件重命名失败! queueDataOld=" + queueDataOld.getAbsolutePath() +               ", queueDataNew=" + queueDataNew.getAbsolutePath());
+
+   }
+
+   // 5. 更新统计文件
+
+    Stat stat = readStat(queue.getName());
+
+    stat.validCount = messageList.size();
+
+    stat.totalCount = messageList.size();
+
+    writeStat(queue.getName(), stat);
+
+   long gcEnd = System.currentTimeMillis();
+
+   System.out.println("[MessageFileManager] gc 执行完毕! queueName=" + queue.getName() + ", time=" + (gcEnd - gcBeg) + "ms");
 
    }
 
 }
+```
 
 如果文件很大, 消息非常多, 可能比较低效, 这种就需要把文件做拆分和合并了.
 
@@ -2201,8 +2174,7 @@ ClassNotFoundException {
     }
 
     List<Message> actualMessages =
-
-messageFileManager.loadAllMessageFromQueue(queueName1);
+            messageFileManager.loadAllMessageFromQueue(queueName1);
 
     Assertions.assertEquals(100, actualMessages.size());
 
@@ -2215,24 +2187,20 @@ messageFileManager.loadAllMessageFromQueue(queueName1);
         System.out.println("[" + i + "] " + actualMessage);
 
         Assertions.assertEquals(expectedMessage.getMessageId(),
-
-actualMessage.getMessageId());
+                actualMessage.getMessageId());
 
         Assertions.assertEquals(expectedMessage.getRoutingKey(),
+                actualMessage.getRoutingKey());
 
-actualMessage.getRoutingKey());
+        Assertions.assertEquals(expectedMessage.getDeliveryMode(),
+                actualMessage.getDeliveryMode());
 
-       Assertions.assertEquals(expectedMessage.getDeliveryMode(),
+        Assertions.assertArrayEquals(expectedMessage.getBody(),
+                actualMessage.getBody());
 
-actualMessage.getDeliveryMode());
+        Assertions.assertEquals(0x1, actualMessage.getIsValid());
 
-       Assertions.assertArrayEquals(expectedMessage.getBody(),
-
-actualMessage.getBody());
-
-       Assertions.assertEquals(0x1, actualMessage.getIsValid());
-
-   }
+    }
 
 }
 
@@ -2267,8 +2235,7 @@ ClassNotFoundException {
    // 读出来, 这个方法只能加载有效数据.
 
     List<Message> actualMessages =
-
-messageFileManager.loadAllMessageFromQueue(queueName1);
+            messageFileManager.loadAllMessageFromQueue(queueName1);
 
     System.out.println("actual: " + actualMessages);
 
@@ -2277,8 +2244,7 @@ messageFileManager.loadAllMessageFromQueue(queueName1);
     for (int i = 0; i < actualMessages.size(); i++) {
 
         Assertions.assertEquals(expectedMessages.get(i + 3).getMessageId(),
-
-actualMessages.get(i).getMessageId());
+                actualMessages.get(i).getMessageId());
 
     }
 
@@ -2308,11 +2274,11 @@ public void testGc() throws IOException, MqException, ClassNotFoundException {
 
     for (int i = 0; i < 100; i += 2) {
 
-       messageFileManager.deleteMessage(queue, expectedMessages.get(i));
+        messageFileManager.deleteMessage(queue, expectedMessages.get(i));
 
-   }
+    }
 
-   // 获取旧文件大小
+    // 获取旧文件大小
 
     File oldFile = new File("./data/" + queueName1 + "/queue_data.txt");
 
@@ -2325,8 +2291,7 @@ public void testGc() throws IOException, MqException, ClassNotFoundException {
     // 重新读文件
 
     List<Message> actualMessages =
-
-messageFileManager.loadAllMessageFromQueue(queueName1);
+            messageFileManager.loadAllMessageFromQueue(queueName1);
 
     Assertions.assertEquals(50, actualMessages.size());
 
@@ -2334,10 +2299,7 @@ messageFileManager.loadAllMessageFromQueue(queueName1);
 
         // 注意这里的下标换算
 
-        Assertions.assertEquals(expectedMessages.get(2 * i +
-```
-
-### 1).getMessageId(), actualMessages.get(i).getMessageId());
+        Assertions.assertEquals(expectedMessages.get(2 * i + 1).getMessageId(), actualMessages.get(i).getMessageId());
 
     }
     
@@ -2354,6 +2316,7 @@ messageFileManager.loadAllMessageFromQueue(queueName1);
     Assertions.assertTrue(oldLength > newLength);
 
 }
+```
 
 ## 八. 整合数据库和文件
 
@@ -2367,6 +2330,7 @@ messageFileManager.loadAllMessageFromQueue(queueName1);
 
 DiskDataCenter 会持有 DataBaseManager 和 MessageFileManager 对象.
 
+```java
 // 管理硬盘上的数据.
 
 // 分成两个部分:
@@ -2374,8 +2338,6 @@ DiskDataCenter 会持有 DataBaseManager 和 MessageFileManager 对象.
 // 1. 数据库管理元信息
 
 // 2. 文件管理消息内容
-
-```java
 public class DiskDataCenter {
 
     private String virtualHostName;

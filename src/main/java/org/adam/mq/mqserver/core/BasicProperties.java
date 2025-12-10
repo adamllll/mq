@@ -1,9 +1,11 @@
 package org.adam.mq.mqserver.core;
 
+import java.io.Serializable;
+
 /**
  * 这个类表示消息的基本属性（Basic Properties），用于存储消息的元数据。
  */
-public class BasicProperties {
+public class BasicProperties implements Serializable { // 在执行testSendMessage发现没有实现Serializable接口会报错，这是由于Message类中包含了BasicProperties属性，当使用 Java 标准序列化机制时,如果一个类实现了 Serializable 接口,那么它的所有非 transient 成员变量也必须是可序列化的。
     // 消息的唯一身份标识符,为了保证id的唯一性，可以使用UUID来生成。
     // UUID是一种标准的用于标识信息的(一种算法)128位长的数字，一般用32个字符的十六进制数表示，通常以连字符分隔成五段，
     // 形式如 "550e8400-e29b-41d4-a716-446655440000"。
@@ -41,5 +43,14 @@ public class BasicProperties {
 
     public void setDeliveryMode(int deliveryMode) {
         this.deliveryMode = deliveryMode;
+    }
+
+    @Override
+    public String toString() {
+        return "BasicProperties{" +
+                "messageId='" + messageId + '\'' +
+                ", routingKey='" + routingKey + '\'' +
+                ", deliveryMode=" + deliveryMode +
+                '}';
     }
 }

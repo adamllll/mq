@@ -1,13 +1,24 @@
 package org.adam.mq.mqserver.datacenter;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.EOFException;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.io.RandomAccessFile;
+import java.lang.annotation.Target;
+import java.util.LinkedList;
+import java.util.Scanner;
+
 import org.adam.mq.common.BinaryTool;
 import org.adam.mq.common.MqException;
 import org.adam.mq.mqserver.core.MSGQueue;
 import org.adam.mq.mqserver.core.Message;
-
-import java.io.*;
-import java.util.Random;
-import java.util.Scanner;
 
 public class MessageFileManager {
     // 定义一个内部类来表示队列的统计信息
@@ -38,9 +49,9 @@ public class MessageFileManager {
     private Stat readStat(String queueName) {
         // 由于当前的消息统计文件是文本文件，可以直接使用Scanner来读取文件
         Stat stat = new Stat();
-        try {
-            InputStream inputStream = new FileInputStream(getQueueStatPath(queueName));
-            Scanner scanner = new Scanner(inputStream);
+        // 修改：使用 try-with-resources 自动关闭流，防止资源泄漏
+        try (InputStream inputStream = new FileInputStream(getQueueStatPath(queueName));
+             Scanner scanner = new Scanner(inputStream)) {
             stat.totalCount = scanner.nextInt();
             stat.validCount = scanner.nextInt();
             return  stat;
@@ -53,13 +64,12 @@ public class MessageFileManager {
     private void writeStat(String queueName, Stat stat) {
         // 使用 PrintWriter 来写入文本文件
         // OutputStream打开文件，默认情况下会把原有内容覆盖掉，此时就相当于重写
-        try {
-            OutputStream outputStream = new FileOutputStream(getQueueStatPath(queueName));
-            PrintWriter printWriter = new PrintWriter(outputStream);
+        // 修改：使用 try-with-resources 自动关闭流，防止资源泄漏
+        try (OutputStream outputStream = new FileOutputStream(getQueueStatPath(queueName));
+             PrintWriter printWriter = new PrintWriter(outputStream)) {
             printWriter.write(stat.totalCount + "\t" + stat.validCount);
             printWriter.flush();
-            printWriter.close();
-        }catch (Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
@@ -179,7 +189,7 @@ public class MessageFileManager {
         // 2. 把 isValid 标记改为 0
         // 3. 把修改后的 Message 对象重新写回到文件的原位置
         synchronized (queue) { // 同步，防止多个线程同时修改同一个文件
-            try (RandomAccessFile randomAccessFile = new RandomAccessFile(getQueueStatPath(queue.getName()), "rw")) {
+            try (RandomAccessFile randomAccessFile = new RandomAccessFile(getQueueDataPath(queue.getName()), "rw")) { // 修复1错误的文件路径getQueueDataPath
                 // 1. 先从文件中读取对应的 Message 对象
                 byte[] bufferSrc = new byte[(int) (message.getOffsetEnd() - message.getOffsetBeg())];
                 randomAccessFile.seek(message.getOffsetBeg());
@@ -195,7 +205,9 @@ public class MessageFileManager {
                 // 虽然上面的操作已经seek过了，但是上面的seek操作之后进行了读操作，读操作会改变文件指针的位置
                 // 所以这里还是需要重新seek一下
                 randomAccessFile.seek(message.getOffsetBeg()); // 定位到原来消息的起始位置
-                randomAccessFile.write(bufferDest.length); // 先写入消息长度
+                //但实际上，由于消息的长度字段已经在 offsetBeg 之前（偏移量 -4 的位置），这行代码完全是多余的，应该直接写入消息体：
+                randomAccessFile.write(bufferDest); // 直接写入修改后的消息对象
+//                randomAccessFile.writeInt(bufferDest.length); // 先写入消息长度修复2直接写入消息体，不需要单独改变长度
                 // 通过上述的操作，对于文件来说，只是有一个字节发生了改变
             }
             // 5.更新消息统计文件,有效消息数减1
@@ -204,6 +216,136 @@ public class MessageFileManager {
                 stat.validCount -= 1;
             }
             writeStat(queue.getName(), stat);
+        }
+    }
+
+    // 使用这个方法从指定队列的消息文件中，加载出所有的消息对象
+    // 这个方法主要用于 broker server 启动的时候，把硬盘上的消息加载到内存中
+    // LinkedList 是一个链表数据结构，适合频繁的插入和删除操作(头删尾插)
+    // 这个方法的参数只是一个 queueName字符串，而不是 MSGQueue 对象,这是因为这个方法不需要加锁，只使用queueName就够了
+    // 由于该方法是在程序启动的时候调用，此时服务器还不能能处理其他请求，所以不需要考虑并发问题(不用加锁)
+    public LinkedList<Message> loadAllMessageFromQueue(String queueName) throws IOException, ClassNotFoundException {
+        LinkedList<Message> messages = new LinkedList<>();
+        try (InputStream inputStream = new FileInputStream(getQueueDataPath(queueName))) {
+            try (DataInputStream dataInputStream = new DataInputStream(inputStream)) {
+                // 使用这个变量记录当前文件光标的位置
+                long currentOffset = 0;
+                // 一个文件中包含若干个消息，此处需要循环读取每个消息
+                while (true) {
+                    // 1. 先读取消息的长度(4个字节)，如果读不到数据，说明已经到文件末尾了(EOF)，跳出循环
+                    // readInt() 方法在到达文件末尾时会抛出 EOFException 异常,这一点和之前的很对流对象不一样
+                    // 所以这里使用捕获异常的方式来判断是否到达文件末尾
+                   int messageSize = dataInputStream.readInt();
+                   // 2. 按照这个长度，读取对应的消息二进制数据
+                   byte[] buffer = new byte[messageSize];
+                   int actualSize = dataInputStream.read(buffer);
+                     if (actualSize != messageSize) { 
+                        // 读取到的字节数与预期不符,说明文件可能损坏，格式错乱了
+                        throw new IOException("[MessageFileManager] 读取消息数据异常，读取到的字节数与预期不符 quneueName=" + queueName);
+                     }
+                     // 3. 把读取到的二进制数据，转换为 Message 对象
+                     Message message = (Message) BinaryTool.fromBytes(buffer);
+                     // 4. 判定一下这个消息对象是否是有效的
+                     if (message.getIsValid() != (byte) 0x1) {
+                            // 无效消息，跳过
+                            // 虽然是无效的消息，但是文件光标位置还是要更新
+                            currentOffset += (4 + messageSize); // 更新文件光标位置
+                            continue;
+                        }
+                    // 5. 有效数据，就把这个消息对象，添加到返回的列表中
+                    // 加入之前还需要设置一下消息的 offsetBeg 和 offsetEnd 属性
+                    // 进行计算offsetBeg 和 offsetEnd的位置，还需要知道当前文件光标的位置，但是由于当前使用的是 DataInputStream不方便直接获取到文件光标的位置
+                    // 所以我们手动计算一下文件光标的位置
+                    // 文件光标的位置 = 已经读取的消息数据的总长度 + 4(消息长度字段)
+                    // 已经读取的消息数据的总长度 = 当前消息的长度 + 前面所有消息的长度之和
+                    message.setOffsetBeg(currentOffset + 4);
+                    message.setOffsetEnd(currentOffset + 4 + messageSize);
+                    currentOffset += (4 + messageSize); // 更新文件光标位置
+                    messages.add(message);
+                }
+            }catch (EOFException e) {
+                // 捕获到 EOFException 异常，说明可能是到达了文件末尾
+                // 这个catch并非异常处理逻辑，而是用来跳出上面的while(true)循环，文件读到末尾会被readInt抛出EOFException
+                // 直接返回已经读取到的消息列表
+                System.out.println("[MessageFileManager] 从文件加载消息完成，queueName=" + queueName + " , 共加载到 " + messages.size() + " 条消息");
+            }
+        }
+        return messages;
+
+    }
+
+    // 检查当前是否要针对该队列的消息文件数据进行GC
+    public boolean checkGC(String queueName) {
+        // 判定是否要GC是根据总消息数和有效消息数的比例来决定的
+        Stat stat = readStat(queueName);
+        if (stat.totalCount > 2000 && (double)stat.validCount / (double)stat.totalCount < 0.5) {
+            return true;
+        }
+        return false;
+    }
+
+    // 对指定队列的消息文件进行GC
+    private String getQueueDataNewPath(String queueName) {
+        return getQueueDir(queueName) + "/queue_data_new.txt";
+    }
+
+    // 通过这个方法真正执行消息数据文件的垃圾回收操作
+    // 使用复制算法执行GC
+    // 把有效的消息复制到一个新的文件中，然后把旧文件删除，最后把新文件重命名为旧文件名
+    // 创建一个新文件queue_data_new.txt，把有效消息写入到这个新文件中,删除旧文件queue_data.txt,把新文件重命名为旧文件名
+    // 同时要记得更新消息统计文件
+    public void gc(MSGQueue queue) throws MqException, IOException, ClassNotFoundException {
+        // 进行gc的时候，是针对消息文件的大洗牌，在这个过程中，不能有其他线程对该队列进行读写操作
+        synchronized (queue) {
+            // 由于gc操作比较耗时，此处统计执行消耗的时间
+            long startTime = System.currentTimeMillis();
+            // 1. 创建一个新的文件
+            File queueDataNewFile = new File(getQueueDataNewPath(queue.getName()));
+            if (queueDataNewFile.exists()) {
+                // 正常情况下这个文件是不存在的，如果存在就说明上次GC没有完成
+                throw new MqException("[MessageFileManager] 发现上次GC未完成，无法进行新的GC操作，queueName=" + queue.getName());
+            }
+            boolean ok = queueDataNewFile.createNewFile();
+            if (!ok) {
+                throw new MqException("[MessageFileManager] 创建GC临时文件失败，queueName=" + queue.getName() + "queueDataNewFile=" + queueDataNewFile.getAbsolutePath());
+            }
+            // 2. 把有效消息复制到新文件中,从旧文件中读取出有效消息(这个逻辑直接调用上述的方法，不需要重新写)
+            LinkedList<Message> messages = loadAllMessageFromQueue(queue.getName());
+
+            // 3. 把有效消息写入到新文件中
+            try (OutputStream outputStream = new FileOutputStream(queueDataNewFile, true)) {
+                try (DataOutputStream dataOutputStream = new DataOutputStream(outputStream)) {
+                    for (Message message : messages) {
+                        // 把 Message 对象转换为二进制数据
+                        byte[] buffer = BinaryTool.toBytes(message);
+                        // 写入消息长度
+                        dataOutputStream.writeInt(buffer.length);
+                        // 写入消息数据
+                        dataOutputStream.write(buffer);
+                    }
+                }
+            }
+
+            // 4. 删除旧文件,并且把新文件重命名为旧文件名
+            File queueDataOldFile = new File(getQueueDataPath(queue.getName()));
+            ok = queueDataOldFile.delete();
+            if (!ok) {
+                throw new MqException("[MessageFileManager] 删除旧消息文件失败，queueName=" + queue.getName() + " , filePath=" + queueDataOldFile.getAbsolutePath());
+            }
+            // 重命名新文件为旧文件名,queue_data_new.txt -> queue_data.txt
+            ok = queueDataOldFile.renameTo(queueDataNewFile);
+            if (!ok) {
+                throw new MqException("[MessageFileManager] 重命名新消息文件失败，queueName=" + queue.getName() + " , oldFilePath=" + queueDataOldFile.getAbsolutePath() + " , newFilePath=" + queueDataNewFile.getAbsolutePath());
+            }
+
+            // 5. 更新消息统计文件
+            Stat stat =readStat(queue.getName());
+            stat.totalCount = messages.size();
+            stat.validCount = messages.size();
+            writeStat(queue.getName(), stat);
+
+            long endTime = System.currentTimeMillis();
+            System.out.println("[MessageFileManager] 对队列 " + queue.getName() + " 进行消息文件GC完成，耗时 " + (endTime - startTime) + " 毫秒");
         }
     }
 }
