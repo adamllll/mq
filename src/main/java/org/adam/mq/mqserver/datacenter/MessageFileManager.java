@@ -333,7 +333,7 @@ public class MessageFileManager {
                 throw new MqException("[MessageFileManager] 删除旧消息文件失败，queueName=" + queue.getName() + " , filePath=" + queueDataOldFile.getAbsolutePath());
             }
             // 重命名新文件为旧文件名,queue_data_new.txt -> queue_data.txt
-            ok = queueDataOldFile.renameTo(queueDataNewFile);
+            ok = queueDataNewFile.renameTo(queueDataOldFile);
             if (!ok) {
                 throw new MqException("[MessageFileManager] 重命名新消息文件失败，queueName=" + queue.getName() + " , oldFilePath=" + queueDataOldFile.getAbsolutePath() + " , newFilePath=" + queueDataNewFile.getAbsolutePath());
             }
