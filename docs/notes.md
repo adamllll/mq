@@ -1,9 +1,7 @@
 # Java - 仿 RabbitMQ 的消息队列
 ## 一. 消息队列背景知识
 
-曾经我们学习过 阻塞队列 (BlockingQueue) , 我们说, 阻塞队列最大的用途, 就是用来实现 生产者消费
-
-者模型.
+曾经我们学习过 阻塞队列 (BlockingQueue) , 我们说, 阻塞队列最大的用途, 就是用来实现 生产者消费者模型.
 
 生产者消费者模型, 存在诸多好处, 是后端开发的常用编程方式.
 
@@ -57,19 +55,13 @@ N 个生产者, N 个消费者
 
 在 Broker 中, 又存在以下概念.
 
-- 虚拟机 (VirtualHost): 类似于 MySQL 的 "database", 是一个逻辑上的集合. 一个 BrokerServer 上可
+- 虚拟机 (VirtualHost): 类似于 MySQL 的 "database", 是一个逻辑上的集合. 一个 BrokerServer 上可以存在多个 VirtualHost.
 
-以存在多个 VirtualHost.
-
-- 交换机 (Exchange): 生产者把消息先发送到 Broker 的 Exchange 上. 再根据不同的规则, 把消息转发
-
-给不同的 Queue.
+- 交换机 (Exchange): 生产者把消息先发送到 Broker 的 Exchange 上. 再根据不同的规则, 把消息转发给不同的 Queue.
 
 - 队列 (Queue): 真正用来存储消息的部分. 每个消费者决定自己从哪个 Queue 上读取消息.
 
-- 绑定 (Binding): Exchange 和 Queue 之间的关联关系. Exchange 和 Queue 可以理解成 "多对多" 关
-
-系. 使用一个关联表就可以把这两个概念联系起来.
+- 绑定 (Binding): Exchange 和 Queue 之间的关联关系. Exchange 和 Queue 可以理解成 "多对多" 关系. 使用一个关联表就可以把这两个概念联系起来.
 
 - 消息 (Message): 传递的内容.
 
@@ -110,13 +102,11 @@ N 个生产者, N 个消费者
 
 另一方面, Producer 和 Consumer 则通过网络的方式, 远程调用这些 API, 实现 生产者消费者模型.
 
-关于 VirtualHost
+**关于 VirtualHost**
 
 对于 RabbitMQ 来说, VirtualHost 也是可以随意创建删除的.
 
-此处咱们暂时不做这部分功能(实现起来也比较简单, 咱们的代码中会完成部分和虚拟主机相关的结构
-
-设计. 大家可以自行完成管理逻辑).
+此处咱们暂时不做这部分功能(实现起来也比较简单, 咱们的代码中会完成部分和虚拟主机相关的结构设计. 大家可以自行完成管理逻辑).
 
 交换机类型 (Exchange Type)
 
@@ -2523,19 +2513,20 @@ MqException, IOException, ClassNotFoundException {
 
 ## 九. 内存数据结构设计
 
-硬盘上存储数据, 只是为了实现 "持久化" 这样的效果. 但是实际的消息存储/转发, 还是主要靠内存的结
-
-构.
+硬盘上存储数据, 只是为了实现 "持久化" 这样的效果. 但是实际的消息存储/转发, 还是主要靠内存的结构.
 
 对于 MQ 来说, 内存部分是更关键的, 内存速度更快, 可以达成更高的并发.
+
+> 内存存储数据为主，硬盘存储数据为辅(主要是为了数据持久化，重启之后数据不丢失)
 
 创建 MemoryDataCenter
 
 创建 mqserver.datacenter.MemoryDataCenter
 
-// 管理所有的内存数据.
+> ![image-20251211210942224](./notes.assets/image-20251211210942224.png)
 
 ```java
+// 管理所有的内存数据.
 public class MemoryDataCenter {
 
     // key 是 exchangeName

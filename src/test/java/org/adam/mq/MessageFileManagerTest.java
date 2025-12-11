@@ -1,5 +1,10 @@
 package org.adam.mq;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.LinkedList;
+import java.util.List;
+
 import org.adam.mq.common.MqException;
 import org.adam.mq.mqserver.core.MSGQueue;
 import org.adam.mq.mqserver.core.Message;
@@ -10,11 +15,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.util.ReflectionTestUtils;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.LinkedList;
-import java.util.List;
 
 @SpringBootTest
 public class MessageFileManagerTest {
@@ -170,5 +170,52 @@ public class MessageFileManagerTest {
             Assertions.assertEquals(expectedMessage.getDeliveryMode(), actualMessage.getDeliveryMode());
             Assertions.assertArrayEquals(expectedMessage.getBody(), actualMessage.getBody());
         }
+    }
+
+    // 测试垃圾回收
+    @Test
+    public void testGC() throws IOException, MqException, ClassNotFoundException {
+        // 先往队列中写入100条消息，获取文件大小
+        // 再把100个消息中的一半全部删除(下标为偶数的消息全部删除)
+        // 再手动调用gc方法，检测得到的文件大小是否缩小了
+
+        MSGQueue queue = createTestQueue(QUEUE_NAME_1);
+        List<Message> expectedMessages = new LinkedList<>();
+        for (int i = 0; i < 100; i++) {
+            Message message = createTestMessage("testMessage" + i);
+            messageFileManager.sendMessage(queue, message);
+            expectedMessages.add(message);
+        }
+        // 获取gc前文件大小
+        File beforeGCFile = new File("./data/" + QUEUE_NAME_1 + "/queue_data.txt");
+        long beforeGCLength = beforeGCFile.length();
+        // 删除偶数下标的消息
+        for (int i = 0; i < 100; i += 2) {
+            messageFileManager.deleteMessage(queue, expectedMessages.get(i));
+        }
+        // 手动调用gc方法
+        messageFileManager.gc(queue);
+        // 重新读取文件，验证新的文件内柔是否和之前的内容匹配
+        List<Message> actualMessages = messageFileManager.loadAllMessageFromQueue(QUEUE_NAME_1);
+        Assertions.assertEquals(50, actualMessages.size());
+        for (int i = 0; i < actualMessages.size(); i++) {
+            // 之前把偶数下标的消息删除了，所以现在实际的消息列表中，应该是下标为奇数的那些消息
+            // actual 的第0条消息，应该对应 expected 的第1条消息
+            // actual 的第1条消息，应该对应 expected 的第3条消息
+            // 以此类推 actual 的第i条消息，应该对应 expected 的第i*2+1条消息
+            Message expectedMessage = expectedMessages.get(i * 2 + 1);
+            Message actualMessage = actualMessages.get(i);
+
+            Assertions.assertEquals(expectedMessage.getMessageId(), actualMessage.getMessageId());
+            Assertions.assertEquals(expectedMessage.getRoutingKey(), actualMessage.getRoutingKey());
+            Assertions.assertEquals(expectedMessage.getDeliveryMode(), actualMessage.getDeliveryMode());
+            Assertions.assertArrayEquals(expectedMessage.getBody(), actualMessage.getBody());
+        }
+        // 获取gc后文件大小
+        File afterGCFile = new File("./data/" + QUEUE_NAME_1 + "/queue_data.txt");
+        long afterGCLength = afterGCFile.length();
+        System.out.println("beforeGCLength=" + beforeGCLength);
+        System.out.println("afterGCLength=" + afterGCLength);
+        Assertions.assertTrue(afterGCLength < beforeGCLength);
     }
 }

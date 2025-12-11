@@ -30,6 +30,11 @@ public class MessageFileManager {
         public int validCount; // 有效消息数
     }
 
+    public void init() {
+        // 初始化消息文件管理器
+        // 目前不需要做任何操作,以备后续扩展
+    }
+
     // 约定消息文件所在的目录和文件名
     // 这个方法用来获取指定队列对应的消息文件所在路径
     private String getQueueDir(String queueName) {
@@ -160,19 +165,20 @@ public class MessageFileManager {
             // 把新的 Message数据，写入到队列数据文件的末尾，此时Message对象的offsetBeg就是文件当前的长度 + 4
             // offsetEnd就是当前文件长度 + 4 + messageBinary.length(message自身长度)
             File queueDataFile = new File(getQueueDataPath(queue.getName()));
-            // 通过这个方法就能queueDataFile.length()就能获取到文件长度，单位字节
-            message.setOffsetBeg(queueDataFile.length() + 4); // +4是因为还要存储消息长度的4个字节
-            message.setOffsetEnd(queueDataFile.length() + 4 + messageBinary.length);
+            // 使用 RandomAccessFile 来进行写操作，可以更精确地控制文件指针和获取文件长度，避免 FileOutputStream 和 File.length() 之间的不一致问题
+            try (RandomAccessFile randomAccessFile = new RandomAccessFile(queueDataFile, "rw")) {
+                // 先把文件指针移动到文件末尾
+                long fileLength = randomAccessFile.length();
+                randomAccessFile.seek(fileLength);
 
-            // 4.写入消息到文件中,追加写入到文件末尾
-            try (OutputStream outputStream = new FileOutputStream(queueDataFile, true)) {
+                message.setOffsetBeg(fileLength + 4); // +4是因为还要存储消息长度的4个字节
+                message.setOffsetEnd(fileLength + 4 + messageBinary.length);
+
+                // 4.写入消息到文件中
                 // 先写入消息的长度(4个字节)
-                // 在流对象中写入一个int类型的数据，需要把int转换成4个字节的byte数组(把int的四个字节分别取出来，一个一个字节的写)
-                try (DataOutputStream dataOutputStream = new DataOutputStream(outputStream)) {
-                    dataOutputStream.writeInt(messageBinary.length);
-                    // 再写入消息的二进制数据(消息本体)
-                    dataOutputStream.write(messageBinary);
-                }
+                randomAccessFile.writeInt(messageBinary.length);
+                // 再写入消息的二进制数据(消息本体)
+                randomAccessFile.write(messageBinary);
             }
 
             // 5.更新消息统计文件
