@@ -5,6 +5,8 @@ import org.adam.mq.mqserver.core.Binding;
 import org.adam.mq.mqserver.core.Exchange;
 import org.adam.mq.mqserver.core.MSGQueue;
 import org.adam.mq.mqserver.core.Message;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -15,6 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * 该类后续提供的的一些方法，可能会在多线程的环境下被使用，必须考虑线程安全问题
  */
 public class MemoryDataCenter {
+    private static final Logger log = LoggerFactory.getLogger(MemoryDataCenter.class);
     // key 是 exchangeName, value 是 Exchange 对象
     private ConcurrentHashMap<String, Exchange> exchangeMap = new ConcurrentHashMap<>();
     // key 是 queueName, value 是 MSGQueue 对象
@@ -26,7 +29,7 @@ public class MemoryDataCenter {
     // key 是 queueName, value 是该队列中的消息列表
     private ConcurrentHashMap<String, LinkedList<Message>> queueMessagesMap = new ConcurrentHashMap<>();
     // key 是 queueName, value 是另一个 map，该 map 的 key 是 messageId，value 是 Message 对象
-    private ConcurrentHashMap<String, ConcurrentHashMap<String, Message>> queueMessageWaitAckMapdui = new ConcurrentHashMap<>();
+    private ConcurrentHashMap<String, ConcurrentHashMap<String, Message>> queueMessageWaitAckMap = new ConcurrentHashMap<>();
 
     // 插入交换机对象
     public void insertExchange(Exchange exchange) {
@@ -130,6 +133,57 @@ public class MemoryDataCenter {
         System.out.println("[MemoryDataCenter] 消息发送到队列成功，queueName=" + queue.getName() + ", messageId=" + message.getMessageId());
     }
     // 从队列中取消息
-
+    public Message pollMessage(String queueName) {
+        // 根据队列名，查找一下对应的消息链表
+        LinkedList<Message> messages = queueMessagesMap.get(queueName);
+        if (messages == null) {
+            // 说明该队列没有任何消息，直接返回null
+            return null;
+        }
+        synchronized (messages) {
+            // 如果没有找到，说明该队列没有任何消息，直接返回null
+            if (messages.size() == 0) {
+                return null;
+            }
+            // 链表中有元素，进行头删
+            Message currentMessage = messages.remove(0);
+            System.out.println("[MemoryDataCenter] 从队列中获取消息成功，queueName=" + queueName + ", messageId=" + currentMessage.getMessageId());
+            return currentMessage;
+        }
+    }
     // 获取指定队列中的消息个数
+    public int getMessageCount(String queueName) {
+        LinkedList<Message> messages = queueMessagesMap.get(queueName);
+        if (messages == null) {
+            // 说明该队列没有任何消息
+            return 0;
+        }
+        synchronized (messages) {
+            return messages.size();
+        }
+    }
+
+    // 添加未确认的消息
+    public void addMessageWaitAck(String queueName, Message message) {
+        // 先根据队列名，找到对应的未确认消息的map
+        ConcurrentHashMap<String, Message> messageHashMap = queueMessageWaitAckMap.computeIfAbsent(queueName, k -> new ConcurrentHashMap<>());
+        messageHashMap.put(message.getMessageId(), message);
+        System.out.println("[MemoryDataCenter] 未确认消息添加成功，queueName=" + queueName + ", messageId=" + message.getMessageId());
+    }
+    // 删除未确认的消息
+    public void removeMessageWaitAck(String queueName, String messageId) {
+        ConcurrentHashMap<String, Message> messageHashMap = queueMessageWaitAckMap.get(queueName);
+        if (messageHashMap != null) {
+            messageHashMap.remove(messageId);
+            System.out.println("[MemoryDataCenter] 未确认消息删除成功，queueName=" + queueName + ", messageId=" + messageId);
+        }
+    }
+    // 获取指定的未确认消息
+    public Message getMessageWaitAck(String queueName, String messageId) {
+        ConcurrentHashMap<String, Message> messageHashMap = queueMessageWaitAckMap.get(queueName);
+        if (messageHashMap != null) {
+            return messageHashMap.get(messageId);
+        }
+        return null;
+    }
 }
