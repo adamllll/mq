@@ -8,8 +8,10 @@ import org.adam.mq.mqserver.core.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -73,7 +75,7 @@ public class MemoryDataCenter {
         ConcurrentHashMap<String, Binding> bindingMap =  bindingsMap.computeIfAbsent(binding.getExchangeName(), k -> new ConcurrentHashMap<>());
         synchronized (bindingMap) { // 对 bindingMap 进行加锁，保证线程安全
             // 再根据 queueName查询，如果已经存在就抛出异常，不存在才能进行插入
-            if (binding.getQueueName() != null) {
+            if (bindingMap.containsKey(binding.getQueueName())) {
                 throw new MqException("[MemoryDataCenter] 绑定已经存在，不能重复插入 exchangeName=" + binding.getExchangeName() + ", queueName=" + binding.getQueueName());
             }
             bindingMap.put(binding.getQueueName(), binding);
@@ -96,7 +98,7 @@ public class MemoryDataCenter {
     // 删除绑定对象
     public void deleteBinding(Binding binding) throws MqException {
         ConcurrentHashMap<String, Binding> bindingMap = bindingsMap.get(binding.getExchangeName());
-        if (binding == null) {
+        if (bindingMap == null) {
             // 如果bindingMap不存在，说明该交换机下没有任何绑定
             throw new MqException("[MemoryDataCenter] 绑定不存在! exchangeName=" + binding.getExchangeName() + ", queueName=" + binding.getQueueName());
         }
@@ -185,5 +187,46 @@ public class MemoryDataCenter {
             return messageHashMap.get(messageId);
         }
         return null;
+    }
+
+    // 这个方法就是从硬盘上读取数据，把硬盘中之前持久化存储的各个维度的数据都恢复到内存中
+    public void recovery(DiskDataCenter diskDataCenter) throws IOException, ClassNotFoundException {
+        // 0. 先把内存中的数据清空
+        exchangeMap.clear();
+        queueMap.clear();
+        bindingsMap.clear();
+        queueMessagesMap.clear();
+        // 1. 恢复交换机数据
+        List<Exchange> exchanges = diskDataCenter.selectAllExchanges();
+        // for 循环插入到内存中
+        for (Exchange exchange : exchanges) {
+            insertExchange(exchange);
+        }
+        // 2. 恢复队列数据
+        List<MSGQueue> queues = diskDataCenter.selectAllQueues();
+        for (MSGQueue queue : queues) {
+            queueMap.put(queue.getName(), queue);
+        }
+        // 3. 恢复绑定数据
+        List<Binding> bindings = diskDataCenter.selectAllBindings();
+        for (Binding binding : bindings) {
+            ConcurrentHashMap<String, Binding> bindingMap = bindingsMap.computeIfAbsent(binding.getExchangeName(), k -> new ConcurrentHashMap<>());
+            bindingMap.put(binding.getQueueName(), binding);
+        }
+
+        // 4. 恢复消息数据
+        // 遍历所有的队列,再根据每个队列的名字获取到所有的消息
+        for (MSGQueue queue : queues) {
+            LinkedList<Message> messages = diskDataCenter.loadAllMessageFromQueue(queue.getName());
+            // 把这些消息放到内存中对应的队列里
+            queueMessagesMap.put(queue.getName(), messages);
+            for (Message message : messages) {
+                // 把消息也放到消息中心中
+                messageMap.put(message.getMessageId(), message);
+            }
+        }
+        // 针对“未确认的消息” 这部分的内存中的数据，不需要从硬盘中恢复，之前考虑硬盘存储的时候，也没有设定这一块
+        // 一旦再等待ack的过程中，服务器重启了，此时这些“未被确认的消息”，就会被恢复成“未被取走的消息”
+        // 因为这个消息在硬盘上存储的时候，就是当做“未被取走”
     }
 }
