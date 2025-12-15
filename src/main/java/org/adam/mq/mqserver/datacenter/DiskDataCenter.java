@@ -41,11 +41,15 @@ public class DiskDataCenter {
     }
 
     // 封装队列操作
-    public void insertQueue(MSGQueue queue) {
+    public void insertQueue(MSGQueue queue) throws IOException {
         dataBaseManager.insertQueue(queue);
+        // 创建队列的同时，不仅仅把队列对象写到数据库中，还需要创建出对应的目录和文件
+        messageFileManager.createQueueFiles(queue.getName());
     }
-    public void deleteQueue(String queueName) {
+    public void deleteQueue(String queueName) throws IOException {
         dataBaseManager.deleteQueue(queueName);
+        // 删除队列的同时，还需要把对应的消息文件给删除掉
+        messageFileManager.destroyQueueFiles(queueName);
     }
     public List<MSGQueue> selectAllQueues() {
         return dataBaseManager.selectAllQueues();

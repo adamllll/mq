@@ -90,4 +90,9 @@ public class Exchange {
     public void setArguments(String key, Object value) {
         arguments.put(key, value);
     }
+    // 再添加一个新的方法, 用于一次性设置整个arguments map
+    public void setArguments(Map<String, Object> arguments) {
+        this.arguments = arguments;
+    }
+
 }

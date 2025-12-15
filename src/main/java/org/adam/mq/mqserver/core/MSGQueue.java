@@ -79,4 +79,8 @@ public class MSGQueue {
     public void setArguments(String key, Object value) {
         this.arguments.put(key, value);
     }
+    // 添加一个方法，用于一次性设置多个参数
+    public void setArguments(Map<String, Object> arguments) {
+        this.arguments = (arguments);
+    }
 }

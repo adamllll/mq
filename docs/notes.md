@@ -2470,21 +2470,31 @@ actualBinding.getBindingKey());
 }
 ```
 
+**小结:**
+
+1. 借助内存汇总的一系列数据结构，保存和管理：交换机、队列、绑定、消息
+   - 广泛使用了哈希表、链表、嵌套的结构等
+
+2. 线程安全，要不要加锁？锁加到哪里？使用哪个对象作为锁对象？
+   - 此处难以一概而论，存在变数具体问题具体分析
+
+总得原则：分析如果不加锁，这个代码会造成什么样的后果/问题？这个问题是否严重？
+
+![image-20251215141525493](./notes.assets/image-20251215141525493.png)
+
 ## 十. 虚拟主机设计
 
-至此, 内存和硬盘的数据都已经组织完成. 接下来使用 "虚拟主机" 这个概念, 把这两部分的数据也串起
-
-来.
+至此, 内存和硬盘的数据都已经组织完成. 接下来使用 "虚拟主机" 这个概念, 把这两部分的数据也串起来.
 
 并且实现一些 MQ 的关键 API.
 
-注意: 在 RabbitMQ 中, 虚拟主机是可以随意创建/删除的. 咱们此处为了实现简单, 并没有实现虚拟主机
+注意: 在 RabbitMQ 中, 虚拟主机是可以随意创建/删除的. 咱们此处为了实现简单, 并没有实现虚拟主机的管理. 因此我们默认就**只有一个虚拟主机**的存在. **但是在数据结构的设计上我们预留了对于多虚拟主机的管理**.
 
-的管理. 因此我们默认就只有一个虚拟主机的存在. 但是在数据结构的设计上我们预留了对于多虚拟主
-
-机的管理.
+![image-20251215203752110](./notes.assets/image-20251215203752110.png)
 
 保证不同虚拟主机中的 Exchange, Queue, Binding, Message 都是相互隔离的.
+
+![image-20251215205412505](./notes.assets/image-20251215205412505.png)
 
 创建 VirtualHost
 
@@ -2574,11 +2584,11 @@ public MemoryDataCenter getMemoryDataCenter() {
 
 - 先写硬盘, 后写内存. 因为写硬盘失败概率更大. 如果硬盘写失败了, 也就不必写内存了.
 
-// 创建交换机
-
-// 先写硬盘, 后写内存. 写硬盘失败概率更大, 如果异常了, 也就不写内存了.
+> exchangeDeclare也是参考RabbitMQ的实现方式(这里只是存储了，但是没有真的实现参数具体的功能)
 
 ```java
+// 创建交换机
+// 先写硬盘, 后写内存. 写硬盘失败概率更大, 如果异常了, 也就不写内存了.
 public boolean exchangeDeclare(String exchangeName, ExchangeType exchangeType,
 
 boolean durable, boolean autoDelete,
@@ -2654,11 +2664,9 @@ exchangeName);
 
 删除交换机
 
-// 删除交换机
-
-// 先写硬盘, 后写内存. 写硬盘失败概率更大, 如果异常了, 也就不写内存了.
-
 ```java
+// 删除交换机
+// 先写硬盘, 后写内存. 写硬盘失败概率更大, 如果异常了, 也就不写内存了.
 public boolean exchangeDelete(String exchangeName) {
 
     // 真实的 exchangeName 需要拼接上 virtualhostName
@@ -2712,9 +2720,8 @@ exchangeName);
 
 创建队列
 
-// 创建队列
-
 ```java
+// 创建队列
 public boolean queueDeclare(String queueName, boolean durable, boolean
 
 exclusive, boolean autoDelete,
@@ -2784,9 +2791,8 @@ queueName);
 
 删除队列
 
-// 删除队列
-
 ```java
+// 删除队列
 public boolean queueDelete(String queueName) {
 
     // 真实的 queueName 需要拼接上 virtualhostName
@@ -2840,9 +2846,8 @@ public boolean queueDelete(String queueName) {
 
 - 后续再介绍 router.checkBindingKeyValid  的实现. 此处先留空.
 
-// 创建绑定
-
 ```java
+// 创建绑定
 public boolean queueBind(String queueName, String exchangeName, String
 
 bindingKey) {
@@ -2946,9 +2951,10 @@ exchangeName + ", queueName=" + queueName);
 
 删除绑定
 
-// 解除绑定
+![image-20251215215628359](./notes.assets/image-20251215215628359.png)
 
 ```java
+// 解除绑定
 public boolean queueUnbind(String queueName, String exchangeName) {
 
     // 真实的 queueName 需要拼接上 virtualhostName
@@ -3032,20 +3038,12 @@ exchangeName + ", queueName=" + queueName);
 
 - 发送消息需要指定 routingKey, 这个值的作用和 ExchangeType 是相关的.
 
-◦
-Direct: routingKey 就是对应队列的名字. 此时不需要 binding 关系, 也不需要 bindingKey, 就可
+- Direct: routingKey 就是对应队列的名字. 此时不需要 binding 关系, 也不需要 bindingKey, 就可以直接转发消息.
 
-以直接转发消息.
+- Fanout: routingKey 不起作用, bindingKey 也不起作用. 此时消息会转发给绑定到该交换机上的所有队列中.
 
-◦
-Fanout: routingKey 不起作用, bindingKey 也不起作用. 此时消息会转发给绑定到该交换机上的
+- Topic: routingKey 是一个特定的字符串, 会和 bindingKey 进行匹配. 如果匹配成功, 则发到对应的队列中. 具体规则后续介绍.
 
-所有队列中.
-
-◦
-Topic: routingKey 是一个特定的字符串, 会和 bindingKey 进行匹配. 如果匹配成功, 则发到对应
-
-的队列中. 具体规则后续介绍.
 
 - BasicProperties 是消息的元信息. body 是消息本体.
 

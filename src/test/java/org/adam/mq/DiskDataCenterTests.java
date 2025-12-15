@@ -208,7 +208,7 @@ public class DiskDataCenterTests {
      * 测试用例 4: 测试插入队列功能
      */
     @Test
-    public void testInsertQueue() {
+    public void testInsertQueue() throws IOException {
         MSGQueue queue = createTestQueue("testQueue");
         diskDataCenter.insertQueue(queue);
         
@@ -224,7 +224,7 @@ public class DiskDataCenterTests {
      * 测试用例 5: 测试删除队列功能
      */
     @Test
-    public void testDeleteQueue() {
+    public void testDeleteQueue() throws IOException {
         MSGQueue queue = createTestQueue("testQueue");
         diskDataCenter.insertQueue(queue);
         

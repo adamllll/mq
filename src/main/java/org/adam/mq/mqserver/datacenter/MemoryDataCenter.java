@@ -49,7 +49,7 @@ public class MemoryDataCenter {
     }
 
     // 插入队列对象
-    public void inserQueue(MSGQueue queue) {
+    public void insertQueue(MSGQueue queue) {
         queueMap.put(queue.getName(), queue);
         System.out.println("[MemoryDataCenter] 新队列添加成功，queueName=" + queue.getName());
     }
