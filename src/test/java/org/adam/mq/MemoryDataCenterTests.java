@@ -71,7 +71,7 @@ public class MemoryDataCenterTests {
     public void testQueue() {
         // 1. 构造一个队列，并插入
         MSGQueue expectedQueue = createTestQueue("test-queue");
-        memoryDataCenter.inserQueue(expectedQueue);
+        memoryDataCenter.insertQueue(expectedQueue);
         // 2. 查询出这个队列，比较结果是否一致
         MSGQueue actualQueue = memoryDataCenter.getQueue("test-queue");
         Assertions.assertEquals(expectedQueue, actualQueue);

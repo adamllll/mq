@@ -238,20 +238,13 @@ public class Exchange {
     private boolean durable = false;
     private boolean autoDelete = false;
     private Map<String, Object> arguments = new HashMap<>();
-    // 省略 getter setter
-}
-
+        // 省略 getter setter }
 public enum ExchangeType {
-    DIRECT(0),
-    FANOUT(1),
-    TOPIC(2);
-
+        DIRECT(0), FANOUT(1), TOPIC(2);
     private final int type;
-
     private ExchangeType(int type) {
         this.type = type;
     }
-
     public int getType() {
         return this.type;
     }
@@ -281,8 +274,7 @@ public class MSGQueue {
     private boolean exclusive;
     private boolean autoDelete;
     private Map<String, Object> arguments = new HashMap<>();
-    // 省略 getter setter
-}
+        // 省略 getter setter }
 ```
 
 类名叫做 MSGQueue, 而不是 Queue, 是为了防止和标准库中的 Queue 混淆.
@@ -304,8 +296,7 @@ public class Binding {
     private String exchangeName;
     private String queueName;
     private String bindingKey;
-    // 省略 getter setter
-}
+        // 省略 getter setter }
 ```
 
 - exchangeName  交换机名字
@@ -325,16 +316,13 @@ public class Binding {
 public class Message implements Serializable {
     private BasicProperties basicProperties = new BasicProperties();
     private byte[] body;
-
     // 消息在文件中对应的 offset 的范围, [offsetBeg, offsetEnd)
     // 从这个范围取出的 byte[] 正好可以反序列化成一个 Message 对象.
     // offsetBeg 前面的 4 个字节是消息的长度
     private transient long offsetBeg = 0;
     private transient long offsetEnd = 0;
-
     // 消息在文件中是否有效. 0x0 表示无效, 0x1 表示有效
     private byte isValid = 0x1;
-
     // 创建新的消息, 同时给该消息分配一个新的 messageId
     // routingKey 以参数的为准. 会覆盖掉 basicProperties 中的 routingKey
     public static Message createMessageWithId(String routingKey, BasicProperties basicProperties, byte[] body) {
@@ -347,18 +335,14 @@ public class Message implements Serializable {
         message.body = body;
         return message;
     }
-
-    // 省略 getter setter
-}
-
+        // 省略 getter setter }
 public class BasicProperties implements Serializable {
     // 消息的唯一 id. 使用 uuid 表示.
     private String messageId;
     private String routingKey;
     // 1 表示消息非持久化. 2 表示消息持久化
     private int deliveryMode = 1;
-    // 省略 getter setter
-}
+        // 省略 getter setter }
 ```
 
 - Message  需要实现 Serializable  接口. 后续需要把 Message 写入文件以及进行网络传输.
@@ -390,25 +374,16 @@ SQLite 只是一个动态库(当然, 官方也提供了可执行程序 exe), 我
 引入 pom.xml 依赖
 
 ```xml
-<dependency>
-    <groupId>org.xerial</groupId>
-    <artifactId>sqlite-jdbc</artifactId>
-    <version>3.41.0.1</version>
-</dependency>
+<dependency> <groupId>org.xerial</groupId> <artifactId>sqlite-jdbc</artifactId> <version>3.41.0.1</version> </dependency>
 ```
 
 配置数据源 application.yml
 
 ```yaml
-spring:
-  datasource:
-    url: jdbc:sqlite:./data/meta.db
-    username:
-    password:
+spring: datasource: url: jdbc:sqlite:./data/meta.db username: password:
     driver-class-name: org.sqlite.JDBC
 
-mybatis:
-  mapper-locations: classpath:mapper/**Mapper.xml
+mybatis: mapper-locations: classpath:mapper/**Mapper.xml
 ```
 
 Username 和 password 空着即可.
@@ -438,30 +413,15 @@ public interface MetaMapper {
 本身 MyBatis 针对 MySQL / Oracle 支持执行多个 SQL 语句的, 但是针对 SQLite 是不支持的, 只能写成多个方法.
 
 ```xml
-<update id="createExchangeTable">
-    create table if not exists exchange (
-        name varchar(50) primary key,
-        type int,                       -- 0 表示 direct, 1 表示 fanout, 2 表示 topic
-        durable boolean,                -- false 表示不持久化, true 表示持久化.
-        autoDelete boolean,             -- false 表示不自动删除, true 表示自动删除.
-        arguments varchar(1024)         -- 创建交换机指定的参数
-    );
+<update id="createExchangeTable"> create table if not exists exchange ( name varchar(50) primary key, type int,                       -- 0 表示 direct, 1 表示 fanout, 2 表示 topic durable boolean,                -- false 表示不持久化, true 表示持久化.
+                autoDelete boolean,             -- false 表示不自动删除, true 表示自动删除. arguments varchar(1024)         -- 创建交换机指定的参数 );
 </update>
 
-<update id="createQueueTable">
-    create table if not exists queue (
-        name varchar(50) primary key,
-        durable boolean,                -- false 表示不持久化, true 表示持久化.
-        autoDelete boolean,             -- false 表示不自动删除, true 表示自动删除.
-        arguments varchar(1024)         -- 创建交换机指定的参数
-    );
+<update id="createQueueTable"> create table if not exists queue ( name varchar(50) primary key, durable boolean,                -- false 表示不持久化, true 表示持久化. autoDelete boolean,             -- false 表示不自动删除, true 表示自动删除.
+                arguments varchar(1024)         -- 创建交换机指定的参数 );
 </update>
 
-<update id="createBindingTable">
-    create table if not exists binding (
-        exchangeName varchar(50),
-        queueName varchar(50),
-        bindingKey varchar(256)
+<update id="createBindingTable"> create table if not exists binding ( exchangeName varchar(50), queueName varchar(50), bindingKey varchar(256)
     );
 </update>
 ```
@@ -489,28 +449,22 @@ void deleteBinding(Binding binding);
 给 MetaMapper  中添加
 
 ```xml
-<insert id="insertExchange" parameterType="com.example.java_message_queue.mqserver.core.Exchange">
-    insert into exchange values(#{name}, #{type}, #{durable}, #{autoDelete}, #{arguments});
+<insert id="insertExchange" parameterType="com.example.java_message_queue.mqserver.core.Exchange"> insert into exchange values(#{name}, #{type}, #{durable}, #{autoDelete}, #{arguments});
 </insert>
 
-<delete id="deleteExchange" parameterType="java.lang.String">
-    delete from exchange where name = #{exchangeName};
+<delete id="deleteExchange" parameterType="java.lang.String"> delete from exchange where name = #{exchangeName};
 </delete>
 
-<insert id="insertQueue" parameterType="com.example.java_message_queue.mqserver.core.MSGQueue">
-    insert into queue values(#{name}, #{durable}, #{autoDelete}, #{arguments});
+<insert id="insertQueue" parameterType="com.example.java_message_queue.mqserver.core.MSGQueue"> insert into queue values(#{name}, #{durable}, #{autoDelete}, #{arguments});
 </insert>
 
-<delete id="deleteQueue" parameterType="java.lang.String">
-    delete from queue where name = #{queueName};
+<delete id="deleteQueue" parameterType="java.lang.String"> delete from queue where name = #{queueName};
 </delete>
 
-<insert id="insertBinding" parameterType="com.example.java_message_queue.mqserver.core.Binding">
-    insert into binding values(#{exchangeName}, #{queueName}, #{bindingKey});
+<insert id="insertBinding" parameterType="com.example.java_message_queue.mqserver.core.Binding"> insert into binding values(#{exchangeName}, #{queueName}, #{bindingKey});
 </insert>
 
-<delete id="deleteBinding" parameterType="com.example.java_message_queue.mqserver.core.Binding">
-    delete from binding where exchangeName = #{exchangeName} and queueName = #{queueName};
+<delete id="deleteBinding" parameterType="com.example.java_message_queue.mqserver.core.Binding"> delete from binding where exchangeName = #{exchangeName} and queueName = #{queueName};
 </delete>
 ```
 
@@ -529,15 +483,12 @@ public class DataBaseManager {
     // 由于 DataBaseManager 不是一个 Bean
     // 需要手动来获取实例
     private MetaMapper metaMapper;
-
     public void init() {
         this.metaMapper = JavaMessageQueueApplication.ac.getBean(MetaMapper.class);
         // 构造数据库
         if (!checkDBExists()) {
-            // 1. 读取 sql 文件中的内容, 并创建表
-            createTable();
-            // 2. 插入默认数据
-            createDefaultData();
+                        // 1. 读取 sql 文件中的内容, 并创建表 createTable();
+                        // 2. 插入默认数据 createDefaultData();
             System.out.println("[DataBaseManager] 数据库初始化完成!");
         } else {
             System.out.println("[DataBaseManager] 数据库已经存在!");
@@ -555,7 +506,6 @@ public class DataBaseManager {
 ```java
 public class JavaMessageQueueApplication {
     public static ConfigurableApplicationContext ac;
-
     public static void main(String[] args) throws IOException {
         ac = SpringApplication.run(JavaMessageQueueApplication.class);
     }
@@ -593,8 +543,7 @@ private void createTable() {
 
 ```java
 private void createDefaultData() {
-    // 构造默认交换机
-    Exchange exchange = new Exchange();
+        // 构造默认交换机 Exchange exchange = new Exchange();
     exchange.setName("");
     exchange.setType(ExchangeType.DIRECT);
     exchange.setDurable(true);
@@ -612,35 +561,27 @@ private void createDefaultData() {
 public void insertExchange(Exchange exchange) {
     metaMapper.insertExchange(exchange);
 }
-
 public void deleteExchange(String exchangeName) {
     metaMapper.deleteExchange(exchangeName);
 }
-
 public List<Exchange> selectAllExchanges() {
     return metaMapper.selectAllExchanges();
 }
-
 public void insertQueue(MSGQueue queue) {
     metaMapper.insertQueue(queue);
 }
-
 public void deleteQueue(String queueName) {
     metaMapper.deleteQueue(queueName);
 }
-
 public List<MSGQueue> selectAllQueues() {
     return metaMapper.selectAllQueues();
 }
-
 public void insertBinding(Binding binding) {
     metaMapper.insertBinding(binding);
 }
-
 public void deleteBinding(Binding binding) {
     metaMapper.deleteBinding(binding);
 }
-
 public List<Binding> selectAllBindings() {
     return metaMapper.selectAllBindings();
 }
@@ -661,25 +602,20 @@ public class DataBaseManagerTests {
 
     @BeforeAll
     public static void setupAll() throws IOException {
-        // 初始情况下, 先统一清除数据库
-        dataBaseManager.deleteDB();
+                // 初始情况下, 先统一清除数据库 dataBaseManager.deleteDB();
     }
 
     @BeforeEach
     public void setUp() throws IOException {
         // 每次运行一个用例, 都重置数据库. 防止用例之间的数据相互干扰.
-        // 需要初始化 ac 对象
-        JavaMessageQueueApplication.ac = SpringApplication.run(JavaMessageQueueApplication.class);
-        // 再初始化数据库
-        dataBaseManager.init();
+                // 需要初始化 ac 对象 JavaMessageQueueApplication.ac = SpringApplication.run(JavaMessageQueueApplication.class);
+                // 再初始化数据库 dataBaseManager.init();
     }
 
     @AfterEach
     public void tearDown() throws IOException {
-        // 需要关闭 ac 对象
-        JavaMessageQueueApplication.ac.close();
-        // 然后再删除数据库
-        dataBaseManager.deleteDB();
+                // 需要关闭 ac 对象 JavaMessageQueueApplication.ac.close();
+                // 然后再删除数据库 dataBaseManager.deleteDB();
     }
 }
 ```
@@ -722,7 +658,6 @@ public void testInitTable() throws IOException {
     Assertions.assertEquals(0, queueList.size());
     Assertions.assertEquals(0, bindingList.size());
 }
-
 private Exchange createTestExchange(String exchangeName) {
     Exchange exchange = new Exchange();
     exchange.setName(exchangeName);
@@ -762,7 +697,6 @@ public void testDeleteExchange() {
     Assertions.assertEquals(1, exchangeList.size());
     Assertions.assertEquals("", exchangeList.get(0).getName());
 }
-
 private MSGQueue createTestQueue(String queueName) {
     MSGQueue queue = new MSGQueue();
     queue.setName(queueName);
@@ -916,27 +850,21 @@ queue_stat.txt  文件格式:
 
 ```java
 public class MessageFileManager {
-    // 表示消息的统计信息
-    static public class Stat {
+        // 表示消息的统计信息 static public class Stat {
         public int totalCount;
         public int validCount;
     }
-
     public void init() {
-        // 当前这里不需要做任何工作.
-    }
-
+                // 当前这里不需要做任何工作. }
     // 队列目录
     private String getQueueDir(String queueName) {
         return "./data/" + queueName;
     }
-
     // 队列数据文件
     // 这个文件来存储队列的真实数据
     private String getQueueDataPath(String queueName) {
         return getQueueDir(queueName) + "/queue_data.txt";
     }
-
     // 队列统计文件
     // 这个文件用来存储队列中的统计信息.
     // 包含一行, 两个列使用 \t 分割, 分别是总数据, 和无效数据.
@@ -969,7 +897,6 @@ private Stat readStat(String queueName) {
     }
     return null;
 }
-
 // 向统计文件中写入结果
 private void writeStat(String queueName, Stat stat) {
     try (OutputStream outputStream = new FileOutputStream(getQueueStatPath(queueName))) {
@@ -990,35 +917,28 @@ private void writeStat(String queueName, Stat stat) {
 
 ```java
 public void createQueueFiles(String queueName) throws IOException {
-    // 1. 创建目录指定队列的目录
-    File baseDir = new File(getQueueDir(queueName));
+        // 1. 创建目录指定队列的目录 File baseDir = new File(getQueueDir(queueName));
     if (!baseDir.exists()) {
         boolean ok = baseDir.mkdirs();
         if (!ok) {
             throw new IOException("创建目录失败! baseDir=" + baseDir.getAbsolutePath());
         }
     }
-
-    // 2. 创建队列数据文件
-    File queueDataFile = new File(getQueueDataPath(queueName));
+        // 2. 创建队列数据文件 File queueDataFile = new File(getQueueDataPath(queueName));
     if (!queueDataFile.exists()) {
         boolean ok = queueDataFile.createNewFile();
         if (!ok) {
             throw new IOException("创建文件失败! queueDataFile=" + queueDataFile.getAbsolutePath());
         }
     }
-
-    // 3. 创建队列统计文件
-    File queueStatFile = new File(getQueueStatPath(queueName));
+        // 3. 创建队列统计文件 File queueStatFile = new File(getQueueStatPath(queueName));
     if (!queueStatFile.exists()) {
         boolean ok = queueStatFile.createNewFile();
         if (!ok) {
             throw new IOException("创建文件失败! queueStatFile=" + queueStatFile.getAbsolutePath());
         }
     }
-
-    // 4. 给队列统计文件写入初始数据
-    Stat stat = new Stat();
+        // 4. 给队列统计文件写入初始数据 Stat stat = new Stat();
     stat.totalCount = 0;
     stat.validCount = 0;
     writeStat(queueName, stat);
@@ -1035,14 +955,11 @@ public void createQueueFiles(String queueName) throws IOException {
 
 ```java
 public void destroyQueueFiles(String queueName) throws IOException {
-    // 1. 先删除目录中的文件
-    File queueDataFile = new File(getQueueDataPath(queueName));
+        // 1. 先删除目录中的文件 File queueDataFile = new File(getQueueDataPath(queueName));
     boolean ok1 = queueDataFile.delete();
     File queueStatFile = new File(getQueueStatPath(queueName));
     boolean ok2 = queueStatFile.delete();
-
-    // 2. 再删除目录. delete 要求必须是空目录才能删除.
-    File baseDir = new File(getQueueDir(queueName));
+        // 2. 再删除目录. delete 要求必须是空目录才能删除. File baseDir = new File(getQueueDir(queueName));
     boolean ok3 = baseDir.delete();
     if (!ok1 || !ok2 || !ok3) {
         throw new IOException("删除队列目录失败! baseDir=" + baseDir.getAbsolutePath());
@@ -1095,7 +1012,6 @@ public class BinaryTool {
         }
         return object;
     }
-
     public static byte[] toBytes(Object object) throws IOException {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         try (ObjectOutputStream objectOutputStream = new ObjectOutputStream(byteArrayOutputStream)) {
@@ -1125,28 +1041,17 @@ public void sendMessage(MSGQueue queue, Message message) throws MqException, IOE
     if (!checkFilesExists(queue.getName())) {
         throw new MqException("[MessageFileManager] 队列匹配的文件不存在! queueName=" + queue.getName());
     }
-
-    // 1. 先把 message 转成二进制
-    byte[] messageBinary = BinaryTool.toBytes(message);
-
-    // 此处的锁对象以队列为维度. 不同队列之间不涉及锁冲突.
-    synchronized (queue) {
-        // 2. 先获取到文件总长度
-        File queueDataFile = new File(getQueueDataPath(queue.getName()));
+        // 1. 先把 message 转成二进制 byte[] messageBinary = BinaryTool.toBytes(message);
+        // 此处的锁对象以队列为维度. 不同队列之间不涉及锁冲突. synchronized (queue) {
+                // 2. 先获取到文件总长度 File queueDataFile = new File(getQueueDataPath(queue.getName()));
         message.setOffsetBeg(queueDataFile.length() + 4);
         message.setOffsetEnd(queueDataFile.length() + 4 + messageBinary.length);
-
-        // 3. 写入消息数据文件
-        try (OutputStream outputStream = new FileOutputStream(queueDataFile, true)) {
+                // 3. 写入消息数据文件 try (OutputStream outputStream = new FileOutputStream(queueDataFile, true)) {
             DataOutputStream dataOutputStream = new DataOutputStream(outputStream);
-            // 先写入消息长度
-            dataOutputStream.writeInt(messageBinary.length);
-            // 再写入消息本体
-            dataOutputStream.write(messageBinary);
+                        // 先写入消息长度 dataOutputStream.writeInt(messageBinary.length);
+                        // 再写入消息本体 dataOutputStream.write(messageBinary);
         }
-
-        // 4. 写入消息统计文件
-        Stat stat = readStat(queue.getName());
+                // 4. 写入消息统计文件 Stat stat = readStat(queue.getName());
         stat.totalCount += 1;
         stat.validCount += 1;
         writeStat(queue.getName(), stat);
@@ -1190,25 +1095,16 @@ public class MqException extends Exception {
 public void deleteMessage(MSGQueue queue, Message message) throws IOException, ClassNotFoundException {
     synchronized (queue) {
         try (RandomAccessFile randomAccessFile = new RandomAccessFile(getQueueDataPath(queue.getName()), "rw")) {
-            // 1. 先从文件中读取出 Message 的数据
-            byte[] bufferSrc = new byte[(int) (message.getOffsetEnd() - message.getOffsetBeg())];
+                        // 1. 先从文件中读取出 Message 的数据 byte[] bufferSrc = new byte[(int) (message.getOffsetEnd() - message.getOffsetBeg())];
             randomAccessFile.seek(message.getOffsetBeg());
             randomAccessFile.read(bufferSrc);
-
-            // 2. 转成 Message 对象
-            Message diskMessage = (Message) BinaryTool.fromBytes(bufferSrc);
-
-            // 3. 设置成无效.
-            diskMessage.setIsValid((byte)0x0);
-
-            // 4. 重新写入文件
-            byte[] bufferDest = BinaryTool.toBytes(diskMessage);
+                        // 2. 转成 Message 对象 Message diskMessage = (Message) BinaryTool.fromBytes(bufferSrc);
+                        // 3. 设置成无效. diskMessage.setIsValid((byte)0x0);
+                        // 4. 重新写入文件 byte[] bufferDest = BinaryTool.toBytes(diskMessage);
             randomAccessFile.seek(message.getOffsetBeg());
             randomAccessFile.write(bufferDest);
         }
-
-        // 更新统计文件
-        Stat stat = readStat(queue.getName());
+                // 更新统计文件 Stat stat = readStat(queue.getName());
         if (stat.validCount > 0) {
             stat.validCount -= 1;
         }
@@ -1237,10 +1133,8 @@ public void deleteMessage(MSGQueue queue, Message message) throws IOException, C
 
 ```java
 public LinkedList<Message> loadAllMessageFromQueue(String queueName) throws MqException, IOException, ClassNotFoundException {
-    // 记录当前读到的数据在文件的 offset
-    long currentOffset = 0;
+        // 记录当前读到的数据在文件的 offset long currentOffset = 0;
     LinkedList<Message> messages = new LinkedList<>();
-
     try (InputStream inputStream = new FileInputStream(getQueueDataPath(queueName))) {
         DataInputStream dataInputStream = new DataInputStream(inputStream);
         while (true) {
@@ -1251,26 +1145,19 @@ public LinkedList<Message> loadAllMessageFromQueue(String queueName) throws MqEx
             if (messageSize != actualSize) {
                 throw new MqException("[MessageFileManager] 文件格式错误! queueName=" + queueName);
             }
-
             Message message = (Message) BinaryTool.fromBytes(buffer);
             if (message.getIsValid() != 0x1) {
-                // 被删除的无效数据, 直接跳过. 不要忘记更新 currentOffset
-                currentOffset += 4 + messageSize;
+                                // 被删除的无效数据, 直接跳过. 不要忘记更新 currentOffset currentOffset += 4 + messageSize;
                 continue;
             }
-
-            // 计算该 message 的 offset
-            message.setOffsetBeg(currentOffset + 4);
+                        // 计算该 message 的 offset message.setOffsetBeg(currentOffset + 4);
             message.setOffsetEnd(currentOffset + 4 + messageSize);
-            // 每个消息, 开头 4 个字节保存的是消息的长度. 接下来 [offsetBeg, offsetEnd) 是消息体
-            currentOffset += 4 + messageSize;
+                        // 每个消息, 开头 4 个字节保存的是消息的长度. 接下来 [offsetBeg, offsetEnd) 是消息体 currentOffset += 4 + messageSize;
             messages.add(message);
         }
     } catch (EOFException e) {
-        // 数据读取完毕, 循环正常退出!
-        System.out.println("[MessageFileManager] 恢复 Message 数据完成!");
+                // 数据读取完毕, 循环正常退出! System.out.println("[MessageFileManager] 恢复 Message 数据完成!");
     }
-
     return messages;
 }
 ```
@@ -1324,11 +1211,9 @@ public boolean checkGC(String queueName) {
     }
     return false;
 }
-
 private String getQueueDataNewPath(String queueName) {
     return getQueueDir(queueName) + "/queue_data_new.txt";
 }
-
 // 真正执行 GC 操作
 // 使用复制算法.
 // 先创建一个新的文件, 名字为 "queue_data_new.txt"
@@ -1338,23 +1223,17 @@ private String getQueueDataNewPath(String queueName) {
 public void gc(MSGQueue queue) throws MqException, IOException, ClassNotFoundException {
     synchronized (queue) {
         long gcBeg = System.currentTimeMillis();
-
-        // 1. 创建一个新的文件, 名字为 "queue_data_new.txt"
-        File queueDataNew = new File(getQueueDataNewPath(queue.getName()));
+                // 1. 创建一个新的文件, 名字为 "queue_data_new.txt" File queueDataNew = new File(getQueueDataNewPath(queue.getName()));
         if (queueDataNew.exists()) {
             throw new MqException("[MessageFileManager] gc 时发现队列新数据文件已经存在! queueName=" + queue.getName());
         }
-
         boolean ok = queueDataNew.createNewFile();
         if (!ok) {
             throw new IOException("创建文件失败! queueDataNew=" + queueDataNew.getAbsolutePath());
         }
-
         // 2. 遍历旧文件, 读取出每个对象 (只保留有效消息)
         List<Message> messageList = loadAllMessageFromQueue(queue.getName());
-
-        // 3. 把有效消息写入到新的文件中.
-        try (OutputStream outputStream = new FileOutputStream(queueDataNew)) {
+                // 3. 把有效消息写入到新的文件中. try (OutputStream outputStream = new FileOutputStream(queueDataNew)) {
             DataOutputStream dataOutputStream = new DataOutputStream(outputStream);
             for (Message message : messageList) {
                 byte[] buffer = BinaryTool.toBytes(message);
@@ -1362,25 +1241,19 @@ public void gc(MSGQueue queue) throws MqException, IOException, ClassNotFoundExc
                 dataOutputStream.write(buffer);
             }
         }
-
-        // 4. 删除 queue_data.txt, 把 queue_data_new.txt 重命名为 queue_data
-        File queueDataOld = new File(getQueueDataPath(queue.getName()));
+                // 4. 删除 queue_data.txt, 把 queue_data_new.txt 重命名为 queue_data File queueDataOld = new File(getQueueDataPath(queue.getName()));
         ok = queueDataOld.delete();
         if (!ok) {
             throw new IOException("删除文件失败! queueDataOld=" + queueDataOld.getAbsolutePath());
         }
-
         ok = queueDataNew.renameTo(queueDataOld);
         if (!ok) {
             throw new IOException("文件重命名失败! queueDataOld=" + queueDataOld.getAbsolutePath() + ", queueDataNew=" + queueDataNew.getAbsolutePath());
         }
-
-        // 5. 更新统计文件
-        Stat stat = readStat(queue.getName());
+                // 5. 更新统计文件 Stat stat = readStat(queue.getName());
         stat.validCount = messageList.size();
         stat.totalCount = messageList.size();
         writeStat(queue.getName(), stat);
-
         long gcEnd = System.currentTimeMillis();
         System.out.println("[MessageFileManager] gc 执行完毕! queueName=" + queue.getName() + ", time=" + (gcEnd - gcBeg) + "ms");
     }
@@ -1426,7 +1299,6 @@ public void testCreateFile() {
     File queueStatFile1 = new File("./data/" + queueName1 + "/queue_stat.txt");
     Assertions.assertEquals(true, queueStatFile1.isFile());
     Assertions.assertTrue(queueStatFile1.length() > 0);
-
     File queueDataFile2 = new File("./data/" + queueName2 + "/queue_data.txt");
     Assertions.assertEquals(true, queueDataFile2.isFile());
     File queueStatFile2 = new File("./data/" + queueName2 + "/queue_stat.txt");
@@ -1439,14 +1311,11 @@ public void testReadWriteStat() {
     MessageFileManager.Stat stat = new MessageFileManager.Stat();
     stat.totalCount = 100;
     stat.validCount = 50;
-
-    // 通过 Spring 提供的反射工具类, 调用私有方法.
-    ReflectionTestUtils.invokeMethod(messageFileManager, "writeStat", queueName1, stat);
+        // 通过 Spring 提供的反射工具类, 调用私有方法. ReflectionTestUtils.invokeMethod(messageFileManager, "writeStat", queueName1, stat);
     MessageFileManager.Stat newStat = ReflectionTestUtils.invokeMethod(messageFileManager, "readStat", queueName1);
     Assertions.assertEquals(100, newStat.totalCount);
     Assertions.assertEquals(50, newStat.validCount);
 }
-
 private MSGQueue createTestQueue(String queueName) {
     MSGQueue queue = new MSGQueue();
     queue.setName(queueName);
@@ -1459,7 +1328,6 @@ private MSGQueue createTestQueue(String queueName) {
     queue.setArguments(hashMap);
     return queue;
 }
-
 private Message createTestMessage(String content) {
     Message message = new Message();
     message.setMessageId("M-" + UUID.randomUUID().toString());
@@ -1474,14 +1342,10 @@ public void testSendMessage() throws IOException, MqException, ClassNotFoundExce
     Message message = createTestMessage("testMessage");
     MSGQueue queue = createTestQueue(queueName1);
     messageFileManager.sendMessage(queue, message);
-
-    // 检查 stat 文件
-    MessageFileManager.Stat newStat = ReflectionTestUtils.invokeMethod(messageFileManager, "readStat", queueName1);
+        // 检查 stat 文件 MessageFileManager.Stat newStat = ReflectionTestUtils.invokeMethod(messageFileManager, "readStat", queueName1);
     Assertions.assertEquals(1, newStat.totalCount);
     Assertions.assertEquals(1, newStat.validCount);
-
-    // 读文件内容
-    List<Message> messageList = messageFileManager.loadAllMessageFromQueue(queueName1);
+        // 读文件内容 List<Message> messageList = messageFileManager.loadAllMessageFromQueue(queueName1);
     Assertions.assertEquals(1, messageList.size());
     Message curMessage = messageList.get(0);
     Assertions.assertEquals(message.getMessageId(), curMessage.getMessageId());
@@ -1494,16 +1358,13 @@ public void testSendMessage() throws IOException, MqException, ClassNotFoundExce
 public void testLoadAllMessageFromQueue() throws IOException, MqException, ClassNotFoundException {
     MSGQueue queue = createTestQueue(queueName1);
     List<Message> expectedMessages = new ArrayList<>();
-
     for (int i = 0; i < 100; i++) {
         Message message = createTestMessage("testMessage");
         messageFileManager.sendMessage(queue, message);
         expectedMessages.add(message);
     }
-
     List<Message> actualMessages = messageFileManager.loadAllMessageFromQueue(queueName1);
     Assertions.assertEquals(100, actualMessages.size());
-
     for (int i = 0; i < 100; i++) {
         Message expectedMessage = actualMessages.get(i);
         Message actualMessage = actualMessages.get(i);
@@ -1520,23 +1381,18 @@ public void testLoadAllMessageFromQueue() throws IOException, MqException, Class
 public void testDeleteMessage() throws IOException, MqException, ClassNotFoundException {
     MSGQueue queue = createTestQueue(queueName1);
     List<Message> expectedMessages = new ArrayList<>();
-
     for (int i = 0; i < 10; i++) {
         Message message = createTestMessage("testMessage");
         messageFileManager.sendMessage(queue, message);
         expectedMessages.add(message);
     }
-
     System.out.println("expected:" + expectedMessages);
     messageFileManager.deleteMessage(queue, expectedMessages.get(0));
     messageFileManager.deleteMessage(queue, expectedMessages.get(1));
     messageFileManager.deleteMessage(queue, expectedMessages.get(2));
-
-    // 读出来, 这个方法只能加载有效数据.
-    List<Message> actualMessages = messageFileManager.loadAllMessageFromQueue(queueName1);
+        // 读出来, 这个方法只能加载有效数据. List<Message> actualMessages = messageFileManager.loadAllMessageFromQueue(queueName1);
     System.out.println("actual: " + actualMessages);
     Assertions.assertEquals(7, actualMessages.size());
-
     for (int i = 0; i < actualMessages.size(); i++) {
         Assertions.assertEquals(expectedMessages.get(i + 3).getMessageId(), actualMessages.get(i).getMessageId());
     }
@@ -1546,37 +1402,25 @@ public void testDeleteMessage() throws IOException, MqException, ClassNotFoundEx
 public void testGc() throws IOException, MqException, ClassNotFoundException {
     MSGQueue queue = createTestQueue(queueName1);
     List<Message> expectedMessages = new ArrayList<>();
-
     // 创建 100 个元素
     for (int i = 0; i < 100; i++) {
         Message message = createTestMessage("testMessage");
         messageFileManager.sendMessage(queue, message);
         expectedMessages.add(message);
     }
-
     // 删除 偶数 下标的元素
     for (int i = 0; i < 100; i += 2) {
         messageFileManager.deleteMessage(queue, expectedMessages.get(i));
     }
-
-    // 获取旧文件大小
-    File oldFile = new File("./data/" + queueName1 + "/queue_data.txt");
+        // 获取旧文件大小 File oldFile = new File("./data/" + queueName1 + "/queue_data.txt");
     long oldLength = oldFile.length();
-
-    // 调用 gc
-    messageFileManager.gc(queue);
-
-    // 重新读文件
-    List<Message> actualMessages = messageFileManager.loadAllMessageFromQueue(queueName1);
+        // 调用 gc messageFileManager.gc(queue);
+        // 重新读文件 List<Message> actualMessages = messageFileManager.loadAllMessageFromQueue(queueName1);
     Assertions.assertEquals(50, actualMessages.size());
-
     for (int i = 0; i < 50; i++) {
-        // 注意这里的下标换算
-        Assertions.assertEquals(expectedMessages.get(2 * i + 1).getMessageId(), actualMessages.get(i).getMessageId());
+                // 注意这里的下标换算 Assertions.assertEquals(expectedMessages.get(2 * i + 1).getMessageId(), actualMessages.get(i).getMessageId());
     }
-
-    // 获取新文件大小
-    File newFile = new File("./data/" + queueName1 + "/queue_data.txt");
+        // 获取新文件大小 File newFile = new File("./data/" + queueName1 + "/queue_data.txt");
     long newLength = newFile.length();
     System.out.println("oldLength=" + oldLength);
     System.out.println("newLength=" + newLength);
@@ -1598,36 +1442,23 @@ DiskDataCenter 会持有 DataBaseManager 和 MessageFileManager 对象.
 
 ```java
 // 管理硬盘上的数据.
-
 // 分成两个部分:
-
 // 1. 数据库管理元信息
-
 // 2. 文件管理消息内容
 public class DiskDataCenter {
 
     private String virtualHostName;
-
    // 管理数据库中的元数据
-
     private DataBaseManager dataBaseManager = new DataBaseManager();
-
     // 管理文件中的消息数据
-
     private MessageFileManager messageFileManager = new MessageFileManager();
-
     public void init(String virtualHostName) {
 
         this.virtualHostName = virtualHostName;
-
         initDir();
-
         dataBaseManager.init();
-
         messageFileManager.init();
-
     }
-
 }
 ```
 
@@ -1643,27 +1474,20 @@ public class DiskDataCenter {
 private void initDir() {
 
     File baseDir = new File("./data/" + virtualHostName);
-
     if (!baseDir.exists()) {
 
         boolean ok = baseDir.mkdirs();
-
         if (ok) {
 
             System.out.println("[DiskDataCenter] 初始化数据目录完成!");
-
        } else {
 
            System.out.println("[DiskDataCenter] 初始化数据目录失败!");
-
        }
-
    } else {
 
        System.out.println("[DiskDataCenter] 数据目录已经存在!");
-
    }
-
 }
 ```
 
@@ -1673,19 +1497,14 @@ private void initDir() {
 public void insertExchange(Exchange exchange) {
 
    dataBaseManager.insertExchange(exchange);
-
 }
-
 public void deleteExchange(String exchangeName) {
 
    dataBaseManager.deleteExchange(exchangeName);
-
 }
-
 public List<Exchange> selectAllExchanges() {
 
    return dataBaseManager.selectAllExchanges();
-
 }
 ```
 
@@ -1695,23 +1514,16 @@ public List<Exchange> selectAllExchanges() {
 public void insertQueue(MSGQueue queue) throws IOException {
 
    dataBaseManager.insertQueue(queue);
-
    messageFileManager.createQueueFiles(queue.getName());
-
 }
-
 public void deleteQueue(String queueName) throws IOException {
 
    dataBaseManager.deleteQueue(queueName);
-
    messageFileManager.destroyQueueFiles(queueName);
-
 }
-
 public List<MSGQueue> selectAllQueues() {
 
    return dataBaseManager.selectAllQueues();
-
 }
 ```
 
@@ -1723,55 +1535,38 @@ public List<MSGQueue> selectAllQueues() {
 public void insertBinding(Binding binding) {
 
    dataBaseManager.insertBinding(binding);
-
 }
-
 public void deleteBinding(Binding binding) {
 
    dataBaseManager.deleteBinding(binding);
-
 }
-
 public List<Binding> selectAllBindings() {
 
    return dataBaseManager.selectAllBindings();
-
 }
 ```
 
 封装 Message 方法
 
 ```java
-public void sendMessage(MSGQueue queue, Message message) throws MqException,
-
-IOException {
+public void sendMessage(MSGQueue queue, Message message) throws MqException, IOException {
 
    messageFileManager.sendMessage(queue, message);
-
 }
 
-public void deleteMessage(MSGQueue queue, Message message) throws MqException,
-
-IOException, ClassNotFoundException {
+public void deleteMessage(MSGQueue queue, Message message) throws MqException, IOException, ClassNotFoundException {
 
    messageFileManager.deleteMessage(queue, message);
-
    // 判定是否要 GC
-
     if (messageFileManager.checkGC(queue.getName())) {
 
         messageFileManager.gc(queue);
-
     }
-
 }
 
-public LinkedList<Message> loadAllMessageFromQueue(String queueName) throws
-
-MqException, IOException, ClassNotFoundException {
+public LinkedList<Message> loadAllMessageFromQueue(String queueName) throws MqException, IOException, ClassNotFoundException {
 
     return messageFileManager.loadAllMessageFromQueue(queueName);
-
 }
 ```
 
@@ -1807,30 +1602,23 @@ public class MemoryDataCenter {
 
     // key 是 exchangeName
     private ConcurrentHashMap<String, Exchange> exchangeMap = new ConcurrentHashMap<>();
-
     // key 是 queueName
     private ConcurrentHashMap<String, MSGQueue> queueMap = new ConcurrentHashMap<>();
-
     // 第一个 key 是 exchangeName, 第二个 key 是 queueName
     private ConcurrentHashMap<String, HashMap<String, Binding>> bindingsMap = new ConcurrentHashMap<>();
-
     // 保存所有消息, key 是 messageId
     private ConcurrentHashMap<String, Message> messageMap = new ConcurrentHashMap<>();
-
     // key 是 queueName
     private ConcurrentHashMap<String, LinkedList<Message>> queueMessageMap = new ConcurrentHashMap<>();
-
     // 用来存放待确认的消息
     // key1 是 queueName, key2 是 messageId.
     // 这个结构不需要有对应的硬盘数据. 换句话说, 如果某个消息消费了, 但是没有 ack, 这个
     // 时候 broker 宕机了, 那么重启 broker 之后
     // 就把刚才的消息当做从来没消费过.
     private ConcurrentHashMap<String, HashMap<String, Message>> queueMessageWaitAck = new ConcurrentHashMap<>();
-
     public void init() {
 
     }
-
 }
 ```
 
@@ -1856,11 +1644,9 @@ public class MemoryDataCenter {
 public void insertExchange(Exchange exchange) {
     exchangeMap.put(exchange.getName(), exchange);
 }
-
 public Exchange getExchange(String exchangeName) {
     return exchangeMap.get(exchangeName);
 }
-
 public void deleteExchange(String exchangeName) {
     exchangeMap.remove(exchangeName);
 }
@@ -1872,11 +1658,9 @@ public void deleteExchange(String exchangeName) {
 public void insertQueue(MSGQueue queue) {
     queueMap.put(queue.getName(), queue);
 }
-
 public MSGQueue getQueue(String queueName) {
     return queueMap.get(queueName);
 }
-
 public void deleteQueue(String queueName) {
     queueMap.remove(queueName);
 }
@@ -1944,7 +1728,6 @@ public Binding getBinding(String queueName, String exchangeName) {
         return bindingMap.get(queueName);
     }
 }
-
 public void deleteBinding(Binding binding) throws MqException {
     HashMap<String, Binding> bindingMap = bindingsMap.get(binding.getExchangeName());
     if (bindingMap == null) {
@@ -1960,7 +1743,6 @@ public void deleteBinding(Binding binding) throws MqException {
         bindingMap.remove(binding.getQueueName());
     }
 }
-
 public Map<String, Binding> getBindingsByExchange(String exchangeName) {
     return bindingsMap.get(exchangeName);
 }
@@ -1973,30 +1755,25 @@ public Map<String, Binding> getBindingsByExchange(String exchangeName) {
 public Message getMessage(String messageId) {
     return messageMap.get(messageId);
 }
-
 // 向消息中心中添加消息
 public void addMessage(Message message) {
     messageMap.put(message.getMessageId(), message);
     System.out.println("[MemoryCenter] 新消息被添加! messageId=" + message.getMessageId());
 }
-
 // 从消息中心删除消息
 public void removeMessage(String messageId) {
     messageMap.remove(messageId);
     System.out.println("[MemoryCenter] 消息被彻底删除! messageId=" + messageId);
 }
-
 // 发送消息到指定队列中
 public void sendMessage(MSGQueue queue, Message message) {
     List<Message> messageList = queueMessageMap.computeIfAbsent(queue.getName(), k -> new LinkedList<>());
     synchronized (messageList) {
         messageList.add(message);
     }
-    // 如果消息已经存在, 重复调用也没啥大不了的.
-    addMessage(message);
+        // 如果消息已经存在, 重复调用也没啥大不了的. addMessage(message);
     System.out.println("[MemoryCenter] 消息被投递到队列中! messageId=" + message.getMessageId() + ", queueName=" + queue.getName());
 }
-
 // 从指定队列中取消息.
 public Message pollMessage(String queueName) throws MqException {
     List<Message> messageList = queueMessageMap.get(queueName);
@@ -2007,13 +1784,11 @@ public Message pollMessage(String queueName) throws MqException {
         if (messageList.size() == 0) {
             return null;
         }
-        // 出队列头元素
-        Message currentMessage = messageList.remove(0);
+                // 出队列头元素 Message currentMessage = messageList.remove(0);
         System.out.println("[MemoryCenter] 消息从队列中取出! messageId=" + currentMessage.getMessageId() + ", queueName=" + queueName);
         return currentMessage;
     }
 }
-
 public int getMessageCount(String queueName) throws MqException {
     List<Message> messageList = queueMessageMap.get(queueName);
     if (messageList == null) {
@@ -2037,7 +1812,6 @@ public void addMessageWaitAck(String queueName, Message message) {
     }
     System.out.println("[MemoryCenter] 消息进入待确认队列! messageId=" + message.getMessageId() + ", queueName=" + queueName);
 }
-
 // 消息被确认之后, 就可以真正删除了.
 public void removeMessageWaitAck(String queueName, String messageId) {
     HashMap<String, Message> messageHashMap = queueMessageWaitAck.get(queueName);
@@ -2049,7 +1823,6 @@ public void removeMessageWaitAck(String queueName, String messageId) {
     }
     System.out.println("[MemoryCenter] 消息从待确认队列删除! messageId=" + messageId + ", queueName=" + queueName);
 }
-
 public Message getMessageWaitAck(String queueName, String messageId) {
     HashMap<String, Message> messageHashMap = queueMessageWaitAck.get(queueName);
     if (messageHashMap == null) {
@@ -2066,25 +1839,19 @@ public Message getMessageWaitAck(String queueName, String messageId) {
 ```java
 // 从硬盘上恢复数据
 public void recovery(DiskDataCenter diskDataCenter) throws MqException, IOException, ClassNotFoundException {
-    // 1. 恢复交换机数据
-    List<Exchange> exchanges = diskDataCenter.selectAllExchanges();
+        // 1. 恢复交换机数据 List<Exchange> exchanges = diskDataCenter.selectAllExchanges();
     for (Exchange exchange : exchanges) {
         exchangeMap.put(exchange.getName(), exchange);
     }
-
-    // 2. 恢复队列数据
-    List<MSGQueue> queues = diskDataCenter.selectAllQueues();
+        // 2. 恢复队列数据 List<MSGQueue> queues = diskDataCenter.selectAllQueues();
     for (MSGQueue queue : queues) {
         queueMap.put(queue.getName(), queue);
     }
-
-    // 3. 恢复绑定数据
-    List<Binding> bindings = diskDataCenter.selectAllBindings();
+        // 3. 恢复绑定数据 List<Binding> bindings = diskDataCenter.selectAllBindings();
     for (Binding binding : bindings) {
         HashMap<String, Binding> bindingMap = bindingsMap.computeIfAbsent(binding.getExchangeName(), k -> new HashMap<>());
         bindingMap.put(binding.getQueueName(), binding);
     }
-
     // 4. 恢复消息数据
     //    只需要恢复 queueMessageMap 和 messageMap
     //    queueMessageWaitAck 则不必恢复. 未被确认的消息只是在内存存储. 如果这个时候 broker 宕机了, 则消息视为没有被消费过.
@@ -2118,9 +1885,7 @@ public class MemoryDataCenterTests {
    public void setUp() {
 
        memoryDataCenter = new MemoryDataCenter();
-
        memoryDataCenter.init();
-
    }
 
    @AfterEach
@@ -2128,55 +1893,32 @@ public class MemoryDataCenterTests {
    public void tearDown() {
 
        memoryDataCenter = null;
-
    }
-
 private Exchange createTestExchange(String exchangeName) {
 
    Exchange exchange = new Exchange();
-
    exchange.setName(exchangeName);
-
    exchange.setType(ExchangeType.FANOUT);
-
    exchange.setAutoDelete(true);
-
    exchange.setDurable(true);
-
    HashMap<String, Object> arguments = new HashMap<>();
-
    arguments.put("aaa", "111");
-
    arguments.put("bbb", "222");
-
    exchange.setArguments(arguments);
-
    return exchange;
-
 }
-
 private MSGQueue createTestQueue(String queueName) {
 
    MSGQueue queue = new MSGQueue();
-
    queue.setName(queueName);
-
    queue.setDurable(true);
-
    queue.setAutoDelete(true);
-
    queue.setExclusive(true);
-
    HashMap<String, Object> hashMap = new HashMap<>();
-
    hashMap.put("aaa", "111");
-
    hashMap.put("bbb", "222");
-
    queue.setArguments(hashMap);
-
    return queue;
-
 }
 
 @Test
@@ -2184,19 +1926,12 @@ private MSGQueue createTestQueue(String queueName) {
 public void testExchange() {
 
    Exchange expectedExchange = createTestExchange("testExchange");
-
    memoryDataCenter.insertExchange(expectedExchange);
-
    Exchange actualExchange = memoryDataCenter.getExchange("testExchange");
-
    Assertions.assertEquals(expectedExchange, actualExchange);
-
    memoryDataCenter.deleteExchange("testExchange");
-
    actualExchange = memoryDataCenter.getExchange("testExchange");
-
    Assertions.assertNull(actualExchange);
-
 }
 
 @Test
@@ -2204,19 +1939,12 @@ public void testExchange() {
 public void testQueue() {
 
    MSGQueue expectedQueue = createTestQueue("testQueue");
-
    memoryDataCenter.insertQueue(expectedQueue);
-
    MSGQueue actualQueue = memoryDataCenter.getQueue("testQueue");
-
    Assertions.assertEquals(expectedQueue, actualQueue);
-
    memoryDataCenter.deleteQueue("testQueue");
-
    actualQueue = memoryDataCenter.getQueue("testQueue");
-
    Assertions.assertNull(actualQueue);
-
 }
 
 @Test
@@ -2224,51 +1952,31 @@ public void testQueue() {
 public void testBinding() throws MqException {
 
    Binding expectedBinding = new Binding();
-
    expectedBinding.setQueueName("testQueue");
-
    expectedBinding.setExchangeName("testExchange");
-
    expectedBinding.setBindingKey("testBindingKey");
-
    memoryDataCenter.insertBinding(expectedBinding);
 
-   Binding actualBinding = memoryDataCenter.getBinding("testQueue",
-
-"testExchange");
-
+      Binding actualBinding = memoryDataCenter.getBinding("testQueue", "testExchange");
    Assertions.assertEquals(expectedBinding, actualBinding);
 
    Map<String, Binding> bindingMap =
 
 memoryDataCenter.getBindingsByExchange("testExchange");
-
    actualBinding = bindingMap.get("testQueue");
-
    Assertions.assertEquals(expectedBinding, actualBinding);
-
    memoryDataCenter.deleteBinding(expectedBinding);
-
    actualBinding = memoryDataCenter.getBinding("testQueue", "testExchange");
-
    Assertions.assertNull(actualBinding);
-
 }
-
 private Message createTestMessage(String content) {
 
    Message message = new Message();
-
    message.setMessageId("M-" + UUID.randomUUID().toString());
-
    message.setRoutingKey("testRoutingKey");
-
    message.setDeliveryMode(2);
-
    message.setBody(content.getBytes());
-
    return message;
-
 }
 
 @Test
@@ -2276,23 +1984,18 @@ private Message createTestMessage(String content) {
 public void testMessage() {
 
    Message expectedMessage = createTestMessage("testMessage");
-
    memoryDataCenter.addMessage(expectedMessage);
 
    Message actualMessage =
 
 memoryDataCenter.getMessage(expectedMessage.getMessageId());
-
    Assertions.assertEquals(expectedMessage, actualMessage);
-
    memoryDataCenter.removeMessage(expectedMessage.getMessageId());
 
    actualMessage =
 
 memoryDataCenter.getMessage(expectedMessage.getMessageId());
-
    Assertions.assertNull(actualMessage);
-
 }
 
 @Test
@@ -2300,45 +2003,28 @@ memoryDataCenter.getMessage(expectedMessage.getMessageId());
 public void testSendMessage() throws MqException {
 
    MSGQueue queue = createTestQueue("testQueue");
-
    List<Message> expectedMessages = new ArrayList<>();
-
    for (int i = 0; i < 10; i++) {
 
        Message message = createTestMessage("testMessage");
-
        memoryDataCenter.sendMessage(queue, message);
-
        expectedMessages.add(message);
-
    }
-
    List<Message> actualMessages = new ArrayList<>();
-
    while (true) {
 
        Message message = memoryDataCenter.pollMessage("testQueue");
-
        if (message == null) {
 
            break;
-
        }
-
        actualMessages.add(message);
-
    }
-
    Assertions.assertEquals(expectedMessages.size(), actualMessages.size());
-
    for (int i = 0; i < expectedMessages.size(); i++) {
 
-       Assertions.assertEquals(expectedMessages.get(i),
-
-actualMessages.get(i));
-
+              Assertions.assertEquals(expectedMessages.get(i), actualMessages.get(i));
    }
-
 }
 
 @Test
@@ -2346,127 +2032,69 @@ actualMessages.get(i));
 public void testMessageWaitAck() {
 
    Message expectedMessage = createTestMessage("testMessage");
-
    memoryDataCenter.addMessageWaitAck("testQueue", expectedMessage);
 
-   Message actualMessage = memoryDataCenter.getMessageWaitAck("testQueue",
-
-expectedMessage.getMessageId());
-
+      Message actualMessage = memoryDataCenter.getMessageWaitAck("testQueue", expectedMessage.getMessageId());
    Assertions.assertEquals(expectedMessage, actualMessage);
 
-   memoryDataCenter.removeMessageWaitAck("testQueue",
+      memoryDataCenter.removeMessageWaitAck("testQueue", expectedMessage.getMessageId());
 
-expectedMessage.getMessageId());
-
-   actualMessage = memoryDataCenter.getMessageWaitAck("testQueue",
-
-expectedMessage.getMessageId());
-
+      actualMessage = memoryDataCenter.getMessageWaitAck("testQueue", expectedMessage.getMessageId());
    Assertions.assertNull(actualMessage);
-
 }
 
 @Test
 
-public void testRecovery() throws IOException, MqException,
-
-ClassNotFoundException {
+public void testRecovery() throws IOException, MqException, ClassNotFoundException {
 
    JavaMessageQueueApplication.ac =
 
 SpringApplication.run(JavaMessageQueueApplication.class);
-
    // 构造初始数据
-
     DiskDataCenter diskDataCenter = new DiskDataCenter();
-
     diskDataCenter.init("");
-
     Exchange expectedExchange = createTestExchange("testExchange");
-
     diskDataCenter.insertExchange(expectedExchange);
-
     MSGQueue expectedQueue = createTestQueue("testQueue");
-
     diskDataCenter.insertQueue(expectedQueue);
-
     Binding expectedBinding = new Binding();
-
     expectedBinding.setExchangeName("testExchange");
-
     expectedBinding.setQueueName("testQueue");
-
     expectedBinding.setBindingKey("testBindingKey");
-
     diskDataCenter.insertBinding(expectedBinding);
-
    Message expectedMessage = createTestMessage("testMessage");
-
    diskDataCenter.sendMessage(expectedQueue, expectedMessage);
-
    // 恢复数据
-
     memoryDataCenter.recovery(diskDataCenter);
-
     // 对比结果
-
     Exchange actualExchange = memoryDataCenter.getExchange("testExchange");
 
-    Assertions.assertEquals(expectedExchange.getType(),
+        Assertions.assertEquals(expectedExchange.getType(), actualExchange.getType());
 
-actualExchange.getType());
+        Assertions.assertEquals(expectedExchange.isDurable(), actualExchange.isDurable());
 
-    Assertions.assertEquals(expectedExchange.isDurable(),
+        Assertions.assertEquals(expectedExchange.isAutoDelete(), actualExchange.isAutoDelete());
 
-actualExchange.isDurable());
-
-    Assertions.assertEquals(expectedExchange.isAutoDelete(),
-
-actualExchange.isAutoDelete());
-
-    Assertions.assertEquals(expectedExchange.getArguments(),
-
-actualExchange.getArguments());
-
+        Assertions.assertEquals(expectedExchange.getArguments(), actualExchange.getArguments());
     MSGQueue actualQueue = memoryDataCenter.getQueue("testQueue");
 
-    Assertions.assertEquals(expectedQueue.isDurable(),
+        Assertions.assertEquals(expectedQueue.isDurable(), actualQueue.isDurable());
 
-actualQueue.isDurable());
+        Assertions.assertEquals(expectedQueue.isAutoDelete(), actualQueue.isAutoDelete());
 
-    Assertions.assertEquals(expectedQueue.isAutoDelete(),
+        Assertions.assertEquals(expectedQueue.isExclusive(), actualQueue.isExclusive());
 
-actualQueue.isAutoDelete());
+        Assertions.assertEquals(expectedQueue.getArguments(), actualQueue.getArguments());
 
-    Assertions.assertEquals(expectedQueue.isExclusive(),
+        Binding actualBinding = memoryDataCenter.getBinding("testQueue", "testExchange");
 
-actualQueue.isExclusive());
-
-    Assertions.assertEquals(expectedQueue.getArguments(),
-
-actualQueue.getArguments());
-
-    Binding actualBinding = memoryDataCenter.getBinding("testQueue",
-
-"testExchange");
-
-    Assertions.assertEquals(expectedBinding.getBindingKey(),
-
-actualBinding.getBindingKey());
-
+        Assertions.assertEquals(expectedBinding.getBindingKey(), actualBinding.getBindingKey());
     // 清理
-
     JavaMessageQueueApplication.ac.close();
-
     File dbFile = new File("meta.db");
-
     dbFile.delete();
-
     File dataFile = new File("./data");
-
     FileUtils.deleteDirectory(dataFile);
-
 }
 ```
 
@@ -2504,15 +2132,14 @@ actualBinding.getBindingKey());
 public class VirtualHost {
 
    private String virtualhostName;
-
    private DiskDataCenter diskDataCenter = new DiskDataCenter();
-
    private MemoryDataCenter memoryDataCenter = new MemoryDataCenter();
-
    private Router router = new Router();
-
    private ConsumerManager consumerManager = new ConsumerManager(this);
-
+    // 操作交换机的锁对象
+    private final Object exchangeLocker = new Object();
+    // 操作队列的锁对象
+    private final Object queueLocker = new Object();
 }
 ```
 
@@ -2528,47 +2155,31 @@ public class VirtualHost {
 public VirtualHost(String virtualhostName) {
 
    this.virtualhostName = virtualhostName;
-
    // 先初始化硬盘数据
-
     diskDataCenter.init(virtualhostName);
-
     // 后初始化内存数据
-
     memoryDataCenter.init();
-
     try {
 
         // 进行恢复操作
-
         memoryDataCenter.recovery(diskDataCenter);
-
    } catch (Exception e) {
 
        e.printStackTrace();
-
        System.out.println("[VirtualHost] 恢复内存数据失败!");
-
    }
-
 }
-
 public String getVirtualhostName() {
 
    return virtualhostName;
-
 }
-
 public DiskDataCenter getDiskDataCenter() {
 
    return diskDataCenter;
-
 }
-
 public MemoryDataCenter getMemoryDataCenter() {
 
    return memoryDataCenter;
-
 }
 ```
 
@@ -2589,76 +2200,43 @@ public MemoryDataCenter getMemoryDataCenter() {
 ```java
 // 创建交换机
 // 先写硬盘, 后写内存. 写硬盘失败概率更大, 如果异常了, 也就不写内存了.
-public boolean exchangeDeclare(String exchangeName, ExchangeType exchangeType,
-
-boolean durable, boolean autoDelete,
-
-                            Map<String, Object> arguments) {
+public boolean exchangeDeclare(String exchangeName, ExchangeType exchangeType, boolean durable, boolean autoDelete, Map<String, Object> arguments) {
 
     // 真实的 exchangeName 需要拼接上 virtualhostName
-
     exchangeName = virtualhostName + exchangeName;
-
     try {
+        synchronized (exchangeLocker) {
+                          // 1. 判定该交换机是否存在 Exchange existsExchange = memoryDataCenter.getExchange(exchangeName);
+            if (existsExchange != null) {
 
-        // 1. 判定该交换机是否存在
+                System.out.println("[VirtualHost] 交换机已经存在! exchangeName=" + exchangeName);
+               return true;
+           }
+           // 2. 构造 Exchange 对象
+           Exchange exchange = new Exchange();
+           exchange.setName(exchangeName);
+           exchange.setType(exchangeType);
+           exchange.setDurable(durable);
+           exchange.setAutoDelete(autoDelete);
+           exchange.setArguments(arguments);
+           // 3. 把数据写入硬盘
+            if (durable) {
 
-        Exchange existsExchange = memoryDataCenter.getExchange(exchangeName);
-
-        if (existsExchange != null) {
-
-            System.out.println("[VirtualHost] 交换机已经存在! exchangeName=" +
-
-exchangeName);
-
+                diskDataCenter.insertExchange(exchange);
+            }
+            // 4. 把数据写入内存
+            memoryDataCenter.insertExchange(exchange);
+            System.out.println("[VirtualHost] 交换机创建完成! exchangeName=" + exchangeName);
            return true;
-
-       }
-
-       // 2. 构造 Exchange 对象
-
-       Exchange exchange = new Exchange();
-
-       exchange.setName(exchangeName);
-
-       exchange.setType(exchangeType);
-
-       exchange.setDurable(durable);
-
-       exchange.setAutoDelete(autoDelete);
-
-       exchange.setArguments(arguments);
-
-       // 3. 把数据写入硬盘
-
-        if (durable) {
-
-            diskDataCenter.insertExchange(exchange);
-
         }
-
-        // 4. 把数据写入内存
-
-        memoryDataCenter.insertExchange(exchange);
-
-        System.out.println("[VirtualHost] 交换机创建完成! exchangeName=" +
-
-exchangeName);
-
-       return true;
-
    } catch (Exception e) {
 
        System.out.println("[VirtualHost] 交换机创建失败! exchangeName=" +
 
 exchangeName);
-
        e.printStackTrace();
-
        return false;
-
    }
-
 }
 ```
 
@@ -2670,51 +2248,31 @@ exchangeName);
 public boolean exchangeDelete(String exchangeName) {
 
     // 真实的 exchangeName 需要拼接上 virtualhostName
-
     exchangeName = virtualhostName + exchangeName;
-
     try {
+        synchronized (exchangeLocker){
+            // 1. 先找到对应的交换机.
+            Exchange toDelete = memoryDataCenter.getExchange(exchangeName);
+            if (toDelete == null) {
 
-        // 1. 先找到对应的交换机.
+                throw new MqException("[VirtualHost] 交换机不存在, 无法删除!");
+           }
+           // 2. 删除硬盘上的交换机数据
+            if (toDelete.isDurable()) {
 
-        Exchange toDelete = memoryDataCenter.getExchange(exchangeName);
-
-        if (toDelete == null) {
-
-            throw new MqException("[VirtualHost] 交换机不存在, 无法删除!");
-
-       }
-
-       // 2. 删除硬盘上的交换机数据
-
-        if (toDelete.isDurable()) {
-
-            diskDataCenter.deleteExchange(exchangeName);
-
+                diskDataCenter.deleteExchange(exchangeName);
+            }
+            // 3. 删除内存中的交换机数据
+            memoryDataCenter.deleteExchange(exchangeName);
+           System.out.println("[VirtualHost] 交换机删除成功! exchangeName=" + exchangeName);
+           return true;
         }
-
-        // 3. 删除内存中的交换机数据
-
-        memoryDataCenter.deleteExchange(exchangeName);
-
-       System.out.println("[VirtualHost] 交换机删除成功! exchangeName=" +
-
-exchangeName);
-
-       return true;
-
    } catch (Exception e) {
 
-       System.out.println("[VirtualHost] 交换机删除失败! exchangeName=" +
-
-exchangeName);
-
+       System.out.println("[VirtualHost] 交换机删除失败! exchangeName=" + exchangeName);
        e.printStackTrace();
-
        return false;
-
    }
-
 }
 ```
 
@@ -2722,70 +2280,36 @@ exchangeName);
 
 ```java
 // 创建队列
-public boolean queueDeclare(String queueName, boolean durable, boolean
-
-exclusive, boolean autoDelete,
-
-                         Map<String, Object> arguments) {
+public boolean queueDeclare(String queueName, boolean durable, boolean exclusive, boolean autoDelete,Map<String, Object> arguments) {
 
     // 真实的 queueName 需要拼接上 virtualhostName
-
     queueName = virtualhostName + queueName;
-
     try {
-
-        // 1. 判定队列是否存在
-
-        MSGQueue existsQueue = memoryDataCenter.getQueue(queueName);
-
-        if (existsQueue != null) {
-
-            System.out.println("[VirtualHost] 队列已经存在! queueName=" +
-
-queueName);
-
+         synchronized (queueLocker){
+                        // 1. 判定队列是否存在 MSGQueue existsQueue = memoryDataCenter.getQueue(queueName);
+            if (existsQueue != null) {
+                System.out.println("[VirtualHost] 队列已经存在! queueName=" + queueName);
+               return true;
+           }
+                      // 2. 创建队列对象 MSGQueue queue = new MSGQueue();
+            queue.setName(queueName);
+            queue.setDurable(durable);
+            queue.setAutoDelete(autoDelete);
+            queue.setArguments(arguments);
+            // 3. 写硬盘
+            if (durable) {
+                diskDataCenter.insertQueue(queue);
+            }
+                        // 4. 写内存 memoryDataCenter.insertQueue(queue);
+            System.out.println("[VirtualHost] 队列创建成功! queueName=" + queueName);
            return true;
-
-       }
-
-       // 2. 创建队列对象
-
-        MSGQueue queue = new MSGQueue();
-
-        queue.setName(queueName);
-
-        queue.setDurable(durable);
-
-        queue.setAutoDelete(autoDelete);
-
-        queue.setArguments(arguments);
-
-        // 3. 写硬盘
-
-        if (durable) {
-
-            diskDataCenter.insertQueue(queue);
-
-        }
-
-        // 4. 写内存
-
-        memoryDataCenter.insertQueue(queue);
-
-        System.out.println("[VirtualHost] 队列创建成功! queueName=" + queueName);
-
-       return true;
-
+         }
    } catch (Exception e) {
 
        System.out.println("[VirtualHost] 队列创建失败! queueName=" + queueName);
-
        e.printStackTrace();
-
        return false;
-
    }
-
 }
 ```
 
@@ -2796,47 +2320,31 @@ queueName);
 public boolean queueDelete(String queueName) {
 
     // 真实的 queueName 需要拼接上 virtualhostName
-
     queueName = virtualhostName + queueName;
-
     try {
+        synchronized (queueLocker){
+            // 1. 根据 queueName 查询对应的队列对象
+            MSGQueue queue = memoryDataCenter.getQueue(queueName);
+            if (queue == null) {
 
-        // 1. 根据 queueName 查询对应的队列对象
+                throw new MqException("[VirtualHost] 队列不存在, 无法删除!");
+           }
+           // 2. 删除硬盘数据
+            if (queue.isDurable()) {
 
-        MSGQueue queue = memoryDataCenter.getQueue(queueName);
-
-        if (queue == null) {
-
-            throw new MqException("[VirtualHost] 队列不存在, 无法删除!");
-
-       }
-
-       // 2. 删除硬盘数据
-
-        if (queue.isDurable()) {
-
-            diskDataCenter.deleteQueue(queueName);
-
+                diskDataCenter.deleteQueue(queueName);
+            }
+            // 3. 删除内存数据
+            memoryDataCenter.deleteQueue(queueName);
+            System.out.println("[VirtualHost] 队列删除成功! queueName=" + queueName);
+           return true;
         }
-
-        // 3. 删除内存数据
-
-        memoryDataCenter.deleteQueue(queueName);
-
-        System.out.println("[VirtualHost] 队列删除成功! queueName=" + queueName);
-
-       return true;
-
    } catch (Exception e) {
 
        System.out.println("[VirtualHost] 队列删除失败! queueName=" + queueName);
-
        e.printStackTrace();
-
        return false;
-
    }
-
 }
 ```
 
@@ -2848,104 +2356,60 @@ public boolean queueDelete(String queueName) {
 
 ```java
 // 创建绑定
-public boolean queueBind(String queueName, String exchangeName, String
-
-bindingKey) {
+public boolean queueBind(String queueName, String exchangeName, String bindingKey) {
 
    // 真实的 queueName 需要拼接上 virtualhostName
-
     queueName = virtualhostName + queueName;
-
     exchangeName = virtualhostName + exchangeName;
-
     try {
+        synchronized (exchangeLocker) {
+             synchronized (queueLocker) {
+                // 1. 判定 binding 是否存在
+                Binding existsBinding = memoryDataCenter.getBinding(queueName, exchangeName);
+                if (existsBinding != null) {
 
-        // 1. 判定 binding 是否存在
+                    throw new MqException("[VirtualHost] binding 已经存在! queueName=" + queueName + ", exchangeName=" + exchangeName);
+               }
+               // 2. 校验 bindingKey 是否合法
+                if (!router.checkBindingKeyValid(bindingKey)) {
 
-        Binding existsBinding = memoryDataCenter.getBinding(queueName,
+                    throw new MqException("[VirtualHost] bindingKey 非法! bindingKey=" + bindingKey);
+               }
+               // 3. 创建 binding 对象
+                Binding binding = new Binding();
+                binding.setQueueName(queueName);
+                binding.setExchangeName(exchangeName);
+                binding.setBindingKey(bindingKey);
+                // 4. 获取到对应的 exchange 和 queue 对象
+                MSGQueue queue = memoryDataCenter.getQueue(queueName);
+                if (queue == null) {
 
-exchangeName);
+                    throw new MqException("[VirtualHost] 对应的队列不存在! queueName=" + queueName);
+               }
+               Exchange exchange = memoryDataCenter.getExchange(exchangeName);
+               if (exchange == null) {
 
-        if (existsBinding != null) {
+                   throw new MqException("[VirtualHost] 对应的交换机不存在!
 
-            throw new MqException("[VirtualHost] binding 已经存在! queueName="
+        exchangeName=" + exchangeName);
+               }
+               // 5. 如果 exchange 和 queue 都是持久化的, 则 binding 也持久化.
+                if (queue.isDurable() && exchange.isDurable()) {
 
-+ queueName + ", exchangeName=" + exchangeName);
-
-       }
-
-       // 2. 校验 bindingKey 是否合法
-
-        if (!router.checkBindingKeyValid(bindingKey)) {
-
-            throw new MqException("[VirtualHost] bindingKey 非法! bindingKey="
-
-+ bindingKey);
-
-       }
-
-       // 3. 创建 binding 对象
-
-        Binding binding = new Binding();
-
-        binding.setQueueName(queueName);
-
-        binding.setExchangeName(exchangeName);
-
-        binding.setBindingKey(bindingKey);
-
-        // 4. 获取到对应的 exchange 和 queue 对象
-
-        MSGQueue queue = memoryDataCenter.getQueue(queueName);
-
-        if (queue == null) {
-
-            throw new MqException("[VirtualHost] 对应的队列不存在! queueName=" +
-
-queueName);
-
-       }
-
-       Exchange exchange = memoryDataCenter.getExchange(exchangeName);
-
-       if (exchange == null) {
-
-           throw new MqException("[VirtualHost] 对应的交换机不存在!
-
-exchangeName=" + exchangeName);
-
-       }
-
-       // 5. 如果 exchange 和 queue 都是持久化的, 则 binding 也持久化.
-
-        if (queue.isDurable() && exchange.isDurable()) {
-
-            diskDataCenter.insertBinding(binding);
-
-        }
-
-        // 6. 写入内存
-
-        memoryDataCenter.insertBinding(binding);
-
-        System.out.println("[VirtualHost] 创建绑定成功! exchangeName=" +
-
-exchangeName + ", queueName=" + queueName);
-
-       return true;
-
+                    diskDataCenter.insertBinding(binding);
+                }
+                // 6. 写入内存
+                memoryDataCenter.insertBinding(binding);
+                System.out.println("[VirtualHost] 创建绑定成功! exchangeName=" + exchangeName + ", queueName=" + queueName);
+               return true;
+             }
+        }   
    } catch (Exception e) {
 
-       System.out.println("[VirtualHost] 创建绑定失败! exchangeName=" +
-
-exchangeName + ", queueName=" + queueName);
-
+       System.out.println("[VirtualHost] 创建绑定失败! exchangeName=" + exchangeName + ", queueName=" + queueName);
        e.printStackTrace();
-
        return false;
-
    }
-
 }
 ```
 
@@ -2958,87 +2422,63 @@ exchangeName + ", queueName=" + queueName);
 public boolean queueUnbind(String queueName, String exchangeName) {
 
     // 真实的 queueName 需要拼接上 virtualhostName
-
     queueName = virtualhostName + queueName;
-
     exchangeName = virtualhostName + exchangeName;
-
     try {
+        synchronized (exchangeLocker) {
+            synchronized (queueLocker) {
+                // 1. 获取到 binding
+                Binding binding = memoryDataCenter.getBinding(queueName, exchangeName);
+                if (binding == null) {
 
-        // 1. 获取到 binding
+                    throw new Exception("[VirtualHost] 绑定不存在!");
+               }
+               // 2. 获取到对应的 exchange 和 queue 对象
+                MSGQueue queue = memoryDataCenter.getQueue(queueName);
+                if (queue == null) {
 
-        Binding binding = memoryDataCenter.getBinding(queueName, exchangeName);
+                    throw new Exception("[VirtualHost] 对应的队列不存在! queueName=" + queueName);
+               }
+               Exchange exchange = memoryDataCenter.getExchange(exchangeName);
+               if (exchange == null) {
 
-        if (binding == null) {
+                   throw new Exception("[VirtualHost] 对应的交换机不存在! exchangeName=" + exchangeName);
+               }
+               // 3. 如果 exchange 和 queue 都是持久化的, 则 binding 从硬盘删除
+                if (queue.isDurable() && exchange.isDurable()) {
 
-            throw new Exception("[VirtualHost] 绑定不存在!");
-
-       }
-
-       // 2. 获取到对应的 exchange 和 queue 对象
-
-        MSGQueue queue = memoryDataCenter.getQueue(queueName);
-
-        if (queue == null) {
-
-            throw new Exception("[VirtualHost] 对应的队列不存在! queueName=" +
-
-queueName);
-
-       }
-
-       Exchange exchange = memoryDataCenter.getExchange(exchangeName);
-
-       if (exchange == null) {
-
-           throw new Exception("[VirtualHost] 对应的交换机不存在! exchangeName="
-
-+ exchangeName);
-
-       }
-
-       // 3. 如果 exchange 和 queue 都是持久化的, 则 binding 从硬盘删除
-
-        if (queue.isDurable() && exchange.isDurable()) {
-
-            diskDataCenter.deleteBinding(binding);
-
+                    diskDataCenter.deleteBinding(binding);
+                }
+                // 4. 从内存删除 binding
+                memoryDataCenter.deleteBinding(binding);
+                System.out.println("[VirtualHost] 绑定删除成功! exchangeName=" + exchangeName + ", queueName=" + queueName);
+               return true;
+            }
         }
-
-        // 4. 从内存删除 binding
-
-        memoryDataCenter.deleteBinding(binding);
-
-        System.out.println("[VirtualHost] 绑定删除成功! exchangeName=" +
-
-exchangeName + ", queueName=" + queueName);
-
-       return true;
-
    } catch (Exception e) {
 
-       System.out.println("[VirtualHost] 绑定删除失败! exchangeName=" +
-
-exchangeName + ", queueName=" + queueName);
-
+       System.out.println("[VirtualHost] 绑定删除失败! exchangeName=" + exchangeName + ", queueName=" + queueName);
        e.printStackTrace();
-
        return false;
-
    }
-
 }
 ```
 
 发布消息
 
-- 发布消息其实是把消息发送给指定的 Exchange, 再根据 Exchange 和 Queue 的 Binding 关系, 转发
-
-到对应队列中.
+- 发布消息其实是把消息发送给指定的 Exchange, 再根据 Exchange 和 Queue 的 Binding 关系, 转发到对应队列中.
 
 - 发送消息需要指定 routingKey, 这个值的作用和 ExchangeType 是相关的.
 
 - Direct: routingKey 就是对应队列的名字. 此时不需要 binding 关系, 也不需要 bindingKey, 就可以直接转发消息.
+
+  > 例如：
+  >
+  > exchange: testExchange (DIRECT)
+  >
+  > queue: testQueue
+  >
+  > 此时没有设定绑定，通过直接交换机在routingkey设定队列名(testQueue)此时消息也是可以发送的
 
 - Fanout: routingKey 不起作用, bindingKey 也不起作用. 此时消息会转发给绑定到该交换机上的所有队列中.
 
@@ -3050,147 +2490,67 @@ exchangeName + ", queueName=" + queueName);
 // 发送消息
 
 ```java
-public boolean basicPublish(String exchangeName, String routingKey,
-
-                            BasicProperties basicProperties, byte[] body) {
+public boolean basicPublish(String exchangeName, String routingKey, BasicProperties basicProperties, byte[] body) {
 
     try {
 
         // 1. 转换交换机名字. 如果是 null, 则使用默认交换机
-
         if (exchangeName == null) {
 
             exchangeName = "";
-
         }
-
         exchangeName = virtualhostName + exchangeName;
-
         // 2. 检查参数合法性
-
         if (!router.checkRoutingKeyValid(routingKey)) {
 
             throw new MqException("[VirtualHost] routingKey 非法! routingKey="
 
 + routingKey);
-
        }
-
        // 3. 查找到交换机对象
-
         Exchange exchange = memoryDataCenter.getExchange(exchangeName);
-
         if (exchange == null) {
 
             throw new MqException("[VirtualHost] 交换机不存在! exchangeName=" +
 
 exchangeName);
-
        }
-
        if (exchange.getType() == ExchangeType.DIRECT) {
 
            String queueName = virtualhostName + routingKey;
-
            // 4. 构造消息对象
-
-            Message message = Message.createMessageWithId(routingKey,
-
-basicProperties, body);
-
-            // 5. 直接转发, 不需要 binding, 直接根据 routingKey 找到队列名, 进行转
-```
-
-发.
-
-            MSGQueue queue = memoryDataCenter.getQueue(queueName);
-    
+            Message message = Message.createMessageWithId(routingKey, basicProperties, body);
+                        // 5. 直接转发, 不需要 binding, 直接根据 routingKey 找到队列名, 进行转发. MSGQueue queue = memoryDataCenter.getQueue(queueName);
             if (queue == null) {
-    
-                throw new MqException("[VirtualHost] 队列不存在! queueName=" +
-
-queueName);
-
+                throw new MqException("[VirtualHost] 队列不存在! queueName=" + queueName);
            }
-    
-           // 6. 直接转发消息
-    
-            sendMessage(queue, message);
-    
+                      // 6. 直接转发消息 sendMessage(queue, message);
         } else {
-    
-            // 4. 找到交换机对应的绑定对象
-    
-            Map<String, Binding> bindings =
-
-memoryDataCenter.getBindingsByExchange(exchangeName);
-
+                        // 4. 找到交换机对应的绑定对象 Map<String, Binding> bindings = memoryDataCenter.getBindingsByExchange(exchangeName);
             // 5. 遍历所有绑定, 进入消息转发逻辑.
-    
             for (Map.Entry<String, Binding> entry : bindings.entrySet()) {
-    
-                // 1) 判定队列是否存在
-    
-                Binding binding = entry.getValue();
-    
-                MSGQueue queue =
-
-memoryDataCenter.getQueue(binding.getQueueName());
-
+                                // 1) 判定队列是否存在 Binding binding = entry.getValue();
+                MSGQueue queue = memoryDataCenter.getQueue(binding.getQueueName());
                 if (queue == null) {
-    
-                    throw new MqException("[VirtualHost] 队列不存在! queueName="
-
-+ binding.getQueueName());
-
+                    throw new MqException("[VirtualHost] 队列不存在! queueName=" + binding.getQueueName());
                }
-               
-               // 2) 构造消息对象. 针对每次写入队列, 都构造一个唯一的消息对象 id. 使
-
-同一个消息, 在不同队列中也能有不同的消息 id.
-
-                //    如果两个队列中的消息 id 一样, 此时就可能在 messageMap 中只存在
-
-一份消息, 而在 queueMessageMap 中存在多份消息.
-
-                //    此时针对消息进行消费操作, 就可能出现一个队列消费了之后, 把消息从
-
-messageMap 删除了; 第二次再从另一个队列消费
-
-                //    的时候, 就无法从 messageMap 中获取到消息了.
-    
-                Message message = Message.createMessageWithId(routingKey,
-
-basicProperties, body);
-
+               // 2) 构造消息对象. 针对每次写入队列, 都构造一个唯一的消息对象 id. 使同一个消息, 在不同队列中也能有不同的消息 id.
+                //    如果两个队列中的消息 id 一样, 此时就可能在 messageMap 中只存在一份消息, 而在 queueMessageMap 中存在多份消息.
+                //    此时针对消息进行消费操作, 就可能出现一个队列消费了之后, 把消息从 messageMap 删除了; 第二次再从另一个队列消费
+                                //    的时候, 就无法从 messageMap 中获取到消息了. Message message = Message.createMessageWithId(routingKey, basicProperties, body);
                 // 3) 判定能否转发
-    
                 if (!router.route(exchange.getType(), binding, message)) {
-    
                     continue;
-    
                 }
-    
-                // 4) 真正转发消息
-    
-                sendMessage(queue, message);
-    
+                                // 4) 真正转发消息 sendMessage(queue, message);
             }
-    
         }
-    
         return true;
-    
     } catch (Exception e) {
-    
         System.out.println("[VirtualHost] 消息发布失败!");
-    
        e.printStackTrace();
-    
        return false;
-
-   }
-
+    }
 }
 
 ```java
@@ -3224,7 +2584,6 @@ private void sendMessage(MSGQueue queue, Message message) throws Exception {
 实现 mqserver.core.Router
 
 ### 1) 实现 route 方法
-
 ```java
 public class Router {
 
@@ -3272,7 +2631,6 @@ exchangeType=" + exchangeType);
 形如 aaa.bbb.ccc
 
 // 不包含通配符, 规则更简单.
-
 ```java
 public boolean checkRoutingKeyValid(String routingKey) {
 
@@ -3340,7 +2698,6 @@ bindingKey 为 a.*.b, 可以匹配 routingKey 为 a.a.b 和 a.b.b 和 a.aaa.b
 bindingKey 为 a.#.b, 可以匹配 routingKey 为 a.a.b 和 a.b.b 和 a.aaa.b 和 a.aa.bb.b 和 a.b
 
    // 需要考虑通配符, 复杂一些
-
 ```java
     public boolean checkBindingKeyValid(String bindingKey) {
 
@@ -3449,21 +2806,100 @@ word.contains("#"))) {
 
 ### 4) 实现 routeTopic
 
-// 需要按照通配符匹配
+**Topic 类型交换机转发规则**
 
-// binding key 包含通配符
+Topic 交换机通过 **模式匹配** 来决定消息路由：
 
-// 1. * 表示任意一个 token 都可以匹配
+- **bindingKey**：创建绑定时指定的模式字符串（相当于"出题"）
+- **routingKey**：发布消息时指定的路由键（相当于"答题"）
 
-// 2. # 表示任意 0 个或 N 个 token 都可以匹配
+**routingKey 格式规则**：
+- 由数字、字母、下划线组成的多个 **token**，用 `.` 分隔
+- 示例：`aaa.bbb.ccc`、`aaa.666.bbb`
+- **不包含通配符**
 
-// 3. 其他内容则要求严格匹配.
+**bindingKey 格式规则**：
+- 同样由 `.` 分隔成多个部分
+- 支持两种 **通配符**：
+  - `*`（星号）：匹配 **恰好一个** token
+  - `#`（井号）：匹配 **零个或多个** token
 
-// 4. # 不会连续出现. # 和 * 不会相邻.
+**通配符使用约束**：
+- `*` 和 `#` 必须作为独立的 token 出现
+  - ✅ 合法：`aaa.*.bbb`
+  - ❌ 非法：`aaa.*bbb.ccc`（`*` 与其他字符粘连）
+- `#` 不会连续出现，`#` 和 `*` 不会相邻
 
-// routing key 不包含通配符. 这个在发消息的时候校验
+**匹配示例**：
+
+**情况一：bindingKey 不含通配符（精确匹配）**
+
+| bindingKey | routingKey | 是否匹配 | 说明 |
+|------------|------------|----------|------|
+| `aaa` | `aaa` | ✅ 匹配 | 完全相同 |
+| `aaa.bbb` | `aaa.bbb` | ✅ 匹配 | 完全相同 |
+| `aaa.bbb` | `aaa.bbb.ccc` | ❌ 不匹配 | token 数量不同 |
+| `aaa.bbb` | `aaa.ccc` | ❌ 不匹配 | 第二个 token 不同 |
+
+**情况二：bindingKey 含 `*`（单 token 通配）**
+
+| bindingKey | routingKey | 是否匹配 | 说明 |
+|------------|------------|----------|------|
+| `aaa.*` | `aaa.bbb` | ✅ 匹配 | `*` 匹配 `bbb` |
+| `aaa.*` | `aaa.bbb.ccc` | ❌ 不匹配 | `*` 只能匹配一个 token |
+| `*.bbb` | `aaa.bbb` | ✅ 匹配 | `*` 匹配 `aaa` |
+| `aaa.*.ccc` | `aaa.bbb.ccc` | ✅ 匹配 | `*` 匹配中间的 `bbb` |
+| `*.*` | `aaa.bbb` | ✅ 匹配 | 两个 `*` 各匹配一个 token |
+| `*.*` | `aaa` | ❌ 不匹配 | 需要恰好两个 token |
+
+**情况三：bindingKey 含 `#`（多 token 通配）**
+
+**✅ 成功匹配的情况：**
+
+| bindingKey | routingKey | 是否匹配 | 说明 |
+|------------|------------|----------|------|
+| `aaa.#` | `aaa.bbb` | ✅ 匹配 | `#` 匹配 `bbb` |
+| `aaa.#` | `aaa.bbb.ccc` | ✅ 匹配 | `#` 匹配 `bbb.ccc` |
+| `aaa.#` | `aaa` | ✅ 匹配 | `#` 匹配零个 token |
+| `#.ccc` | `aaa.bbb.ccc` | ✅ 匹配 | `#` 匹配 `aaa.bbb` |
+| `#.ccc` | `ccc` | ✅ 匹配 | `#` 匹配零个 token |
+| `aaa.#.ccc` | `aaa.bbb.ccc` | ✅ 匹配 | `#` 匹配 `bbb` |
+| `aaa.#.ccc` | `aaa.ccc` | ✅ 匹配 | `#` 匹配零个 token |
+
+**❌ 匹配失败的情况：**
+
+| bindingKey | routingKey | 是否匹配 | 失败原因 |
+|------------|------------|----------|----------|
+| `aaa.#.ccc` | `aaa.bbb.ddd` | ❌ 不匹配 | `#` 后需要找到 `ccc`，但最后一个 token 是 `ddd` |
+| `#.ccc` | `aaa.bbb` | ❌ 不匹配 | `#` 可以匹配 `aaa.bbb`，但后面缺少必需的 `ccc` |
+| `aaa.#.xxx.ccc` | `aaa.bbb.ccc` | ❌ 不匹配 | `#` 匹配 `bbb` 后，需要 `xxx` 和 `ccc`，但实际只有 `ccc` |
+| `aaa.#` | `bbb.ccc` | ❌ 不匹配 | 第一个 token `aaa` 与 `bbb` 不匹配（还没到 `#` 就失败了）|
+| `aaa.bbb.#` | `aaa.ccc.ddd` | ❌ 不匹配 | 第二个 token `bbb` 与 `ccc` 不匹配（还没到 `#` 就失败了）|
+| `#.xyz` | `aaa.bbb.ccc` | ❌ 不匹配 | routingKey 中不存在 `xyz` token |
+
+**特殊情况：bindingKey 只有一个 `#`**
+
+| bindingKey | routingKey | 是否匹配 | 说明 |
+|------------|------------|----------|------|
+| `#` | `aaa` | ✅ 匹配 | 匹配任意单个 token |
+| `#` | `aaa.bbb` | ✅ 匹配 | 匹配任意两个 token |
+| `#` | `aaa.bbb.ccc` | ✅ 匹配 | 匹配任意多个 token |
+| `#` | *(空)* | ✅ 匹配 | 匹配零个 token |
+
+> **注意**：当 bindingKey 设为单独的 `#` 时，它会匹配**所有** routingKey，相当于该队列接收该交换机的**全部消息**。这在实际使用中要谨慎，因为它本质上把 Topic 交换机变成了 Fanout 交换机的行为。
+>
+> 主题交换机和扇出交换机都属于主题交换机的“特例”
+
+> PS: 上述规则遵循 AMQP 协议
 
 ```java
+// 需要按照通配符匹配
+// binding key 包含通配符
+// 1. * 表示任意一个 token 都可以匹配
+// 2. # 表示任意 0 个或 N 个 token 都可以匹配
+// 3. 其他内容则要求严格匹配.
+// 4. # 不会连续出现. # 和 * 不会相邻.
+// routing key 不包含通配符. 这个在发消息的时候校验
 private boolean routeTopic(Binding binding, Message message) {
 
     // 按照 . 来切分 binding key 和 routing key
@@ -3548,19 +2984,12 @@ false
 (!bindingTokens[bindingIndex].equals(routingTokens[routingIndex])) {
 
                 return false;
-    
             }
-    
             bindingIndex++;
-    
             routingIndex++;
-    
         }
-    
     }
-    
     // 如果两方不能同时结束, 则也视为匹配失败.
-    
     // 比如 aaa.*.bbb 和 aaa.bbb
     
     if (bindingIndex == bindingTokens.length && routingIndex ==
@@ -3568,13 +2997,9 @@ false
 routingTokens.length) {
 
         return true;
-    
     }
-    
     return false;
-
 }
-
 ```java
 private int findNextMatch(String[] routingTokens, int routingIndex, String
 
@@ -3598,45 +3023,27 @@ bindingToken) {
 ### 5) 匹配规则测试用例
 
 // [测试用例]
-
 // binding key          routing key         result
-
 // aaa                  aaa                 true
-
 // aaa.bbb              aaa.bbb             true
-
 // aaa.bbb              aaa.bbb.ccc         false
-
 // aaa.bbb              aaa.ccc             false
-
 // aaa.bbb.ccc          aaa.bbb.ccc         true
-
 // aaa.*                aaa.bbb             true
-
 // aaa.*.bbb            aaa.bbb.ccc         false
-
 // *.aaa.bbb            aaa.bbb             false
-
 // #                    aaa.bbb.ccc         true
-
 // aaa.#                aaa.bbb             true
-
 // aaa.#                aaa.bbb.ccc         true
-
 // aaa.#.ccc            aaa.ccc             true
-
 // aaa.#.ccc            aaa.bbb.ccc         true
-
 // aaa.#.ccc            aaa.aaa.bbb.ccc     true
-
 // #.ccc                ccc                 true
-
 // #.ccc                aaa.bbb.ccc         true
 
 ### 6) 测试 Router
 
 创建 RouterTests
-
 ```java
 @SpringBootTest
 
@@ -3778,11 +3185,8 @@ public void test() throws MqException {
 ### 1) 添加一个订阅者
 
 // 订阅消息
-
 // 如果是多个消费者消费一个队列, 将使用轮询的方式进行消费.
-
 // 参数的 consumerTag 应该在网络通信部分设定.
-
 ```java
 public boolean basicConsume(String consumerTag, String queueName, boolean
 
@@ -3818,7 +3222,6 @@ queueName);
 ```
 
 Consumer 相当于一个回调函数. 放到 common.Consumer  中.
-
 ```java
 @FunctionalInterface
 
@@ -3836,7 +3239,6 @@ body) throws MqException, IOException;
 ### 2) 创建订阅者管理管理类
 
 创建 mqserver.core.ConsumerManager
-
 ```java
 public class ConsumerManager {
 
@@ -3866,7 +3268,6 @@ public class ConsumerManager {
 ### 3) 添加令牌接口
 
 // 通知消费者去消费消息
-
 ```java
 public void notifyConsume(String queueName) throws InterruptedException {
 
@@ -3880,7 +3281,6 @@ public void notifyConsume(String queueName) throws InterruptedException {
 - 新来订阅者的时候, 需要先消费掉之前积压的消息.
 
 - consumeMessage 真正的消息消费操作, 一会再实现.
-
 ```java
 public void addConsumer(String consumerTag, String queueName, boolean autoAck,
 
@@ -3924,7 +3324,6 @@ consumer);
 创建 ConsumerEnv , 这个类表示一个订阅者的执行环境.
 
 // 表示一个消费者的上下文环境
-
 ```java
 public class ConsumerEnv {
 
@@ -3958,7 +3357,6 @@ Consumer consumer) {
 给 MsgQueue  添加一个订阅者列表.
 
 // 该队列被哪些消费者订阅
-
 ```java
 private List<ConsumerEnv> consumerEnvList = new ArrayList<>();
 
@@ -3998,7 +3396,6 @@ public ConsumerEnv chooseConsumer() {
 在 ConsumerManager 中创建一个线程, 不停的尝试扫描令牌队列. 如果拿到了令牌, 就真正触发消费消
 
 息操作.
-
 ```java
 public ConsumerManager(VirtualHost parent) {
 
@@ -4056,7 +3453,6 @@ queueName=" + queueName);
 ### 6) 实现消费消息
 
 所谓的消费消息, 其实就是调用消息的回调. 并把消息删除掉.
-
 ```java
 private void consumeMessage(MSGQueue msgQueue) throws MqException {
 
@@ -4101,20 +3497,12 @@ msgQueue.getName() + ", messageId=" + message.getMessageId());
 
 用 basicAck, 执行彻底删除. 需要先放到待确认队列, 才能彻底删除)
 
-            parent.getMemoryDataCenter().addMessageWaitAck(msgQueue.getName(),
-
-message);
-
+                        parent.getMemoryDataCenter().addMessageWaitAck(msgQueue.getName(), message);
             // 2. 调用消费者的回调. 如果回调抛出异常了, 则不会对消息进行任何 ack 操作.
-    
             //    相当于消息仍然处在待消费的状态.
     
-            luckyDog.getConsumer().handleDelivery(luckyDog.getConsumerTag(),
-
-message.getBasicProperties(), message.getBody());
-
+                        luckyDog.getConsumer().handleDelivery(luckyDog.getConsumerTag(), message.getBasicProperties(), message.getBody());
             // 3. 如果消息是自动确认, 则可以直接把消息彻底删除了.
-    
             //    (这个逻辑必须放到执行回调后面. 万一执行回调一半服务器崩溃, 这个消息仍
 
 然存在于硬盘上, 下次启动还可以被继续消费到)
@@ -4122,31 +3510,19 @@ message.getBasicProperties(), message.getBody());
             if (luckyDog.isAutoAck()) {
     
                 //  则修改硬盘上的消息为 "无效". 同时删除内存中的消息
-    
                 if (message.getDeliveryMode() == 2) {
     
-                    parent.getDiskDataCenter().deleteMessage(msgQueue,
-
-message);
-
+                                        parent.getDiskDataCenter().deleteMessage(msgQueue, message);
                 }
 
-parent.getMemoryDataCenter().removeMessageWaitAck(msgQueue.getName(),
-
-message.getMessageId());
-
+parent.getMemoryDataCenter().removeMessageWaitAck(msgQueue.getName(), message.getMessageId());
 parent.getMemoryDataCenter().removeMessage(message.getMessageId());
-
             }
-    
         } catch (MqException | IOException | ClassNotFoundException e) {
     
             e.printStackTrace();
-    
         }
-    
     });
-
 }
 
 注意: 一个队列可能有 N 个消费者, 此处应该按照轮询的方式挑一个消费者进行消费.
@@ -4198,7 +3574,6 @@ parent.getMemoryDataCenter().removeMessage(message.getMessageId());
 下列方法只是手动应答的时候才会使用.
 
 应答成功, 则把消息删除掉.
-
 ```java
 public boolean basicAck(String queueName, String messageId) {
 
@@ -4260,7 +3635,6 @@ queueName + ", messageId=" + messageId);
 - 使用 FileUtils.deleteDirector  递归的删除目录中的内容. 这个是 Spring 自带的类
 
 org.apache.tomcat.util.http.fileupload.FileUtils
-
 ```java
 @SpringBootTest
 
@@ -4300,7 +3674,6 @@ SpringApplication.run(JavaMessageQueueApplication.class);
 ```
 
 编写测试用例
-
 ```java
 @Test
 
@@ -4817,7 +4190,6 @@ properties.getMessageId()));
 定义 Request / Response
 
 创建 common.Request
-
 ```java
 public class Request {
 
@@ -4833,7 +4205,6 @@ public class Request {
 ```
 
 创建 common.Response
-
 ```java
 public class Response {
 
@@ -4857,7 +4228,6 @@ public class Response {
 通过继承的方式体现.
 
 common.BasicArguments
-
 ```java
 public class BaseArguments implements Serializable {
 
@@ -4881,7 +4251,6 @@ public class BaseArguments implements Serializable {
 和参数同理, 也需要构造一个类表示返回值, 作为 Response 的 payload.
 
 common.BasicReturns
-
 ```java
 public class BaseReturns implements Serializable {
 
@@ -4903,7 +4272,6 @@ public class BaseReturns implements Serializable {
 针对每个 VirtualHost 提供的方法, 都需要有一个类表示对应的参数.
 
 ### 1) ExchangeDeclareArguments
-
 ```java
 public class ExchangeDeclareArguments extends BaseArguments implements
 
@@ -4934,7 +4302,6 @@ ExchangeDeclareArguments 对象.
 后续请求报文格式同理, 就不再重复画了.
 
 ### 2) ExchangeDeleteArguments
-
 ```java
 public class ExchangeDeleteArguments extends BaseArguments implements
 
@@ -4946,7 +4313,6 @@ Serializable {
 ```
 
 ### 3) QueueDeclareArguments
-
 ```java
 public class QueueDeclareArguments extends BaseArguments implements
 
@@ -4966,7 +4332,6 @@ Serializable {
 ```
 
 ### 4) QueueDeleteArguments
-
 ```java
 public class QueueDeleteArguments extends BaseArguments implements Serializable
 
@@ -4978,7 +4343,6 @@ public class QueueDeleteArguments extends BaseArguments implements Serializable
 ```
 
 ### 5) QueueBindArguments
-
 ```java
 public class QueueBindArguments extends BaseArguments implements Serializable {
 
@@ -4992,7 +4356,6 @@ public class QueueBindArguments extends BaseArguments implements Serializable {
 ```
 
 ### 6) QueueUnbindArguments
-
 ```java
 public class QueueUnbindArguments extends BaseArguments implements Serializable
 
@@ -5006,7 +4369,6 @@ public class QueueUnbindArguments extends BaseArguments implements Serializable
 ```
 
 ### 7) BasicPublishArguments
-
 ```java
 public class BasicPublishArguments extends BaseArguments implements
 
@@ -5024,7 +4386,6 @@ Serializable {
 ```
 
 ### 8) BasicConsumeArguments
-
 ```java
 public class BasicConsumeArguments extends BaseArguments implements
 
@@ -5046,7 +4407,6 @@ Serializable {
 - consumerTag 其实是 channelId.
 
 - basicProperties 和 body 共同构成了 Message.
-
 ```java
 public class SubScribeReturns extends BaseReturns implements Serializable {
 
@@ -5062,7 +4422,6 @@ public class SubScribeReturns extends BaseReturns implements Serializable {
 ## 十二. 实现 BrokerServer
 
 创建 BrokerServer 类
-
 ```java
 public class BrokerServer {
 
@@ -5100,7 +4459,6 @@ ConcurrentHashMap<>();
 - 这里就是一个单纯的 TCP 服务器, 没啥特别的.
 
 - 实现停止操作, 主要是为了方便后续开展单元测试.
-
 ```java
 public BrokerServer(int port) throws IOException {
 
@@ -5149,12 +4507,7 @@ public void stop() throws IOException {
 
 - 对于 EOFException 和 SocketException , 我们视为客户端正常断开连接.
 
-◦
-如果是客户端先 close, 后调用 DataInputStream 的 read, 则抛出 EOFException
-
-◦
-如果是先调用 DataInputStream 的 read, 后客户端调用 close, 则抛出 SocketException
-
+◦ 如果是客户端先 close, 后调用 DataInputStream 的 read, 则抛出 EOFException ◦ 如果是先调用 DataInputStream 的 read, 后客户端调用 close, 则抛出 SocketException
 ```java
 private void processConnection(Socket clientSocket) {
 
@@ -5212,7 +4565,6 @@ clientSocket.getInetAddress().toString()
 ```
 
 实现 readRequest
-
 ```java
 private Request readRequest(DataInputStream dataInputStream) throws
 
@@ -5244,7 +4596,6 @@ IOException {
 实现 writeResponse
 
 - 注意这里的 flush 操作很关键, 否则响应不一定能及时返回给客户端.
-
 ```java
 private void writeResponse(DataOutputStream dataOutputStream, Response
 
@@ -5270,7 +4621,6 @@ response) throws IOException {
 - 针对消息订阅操作, 则需要在存在消息的时候通过回调, 把响应结果写回给对应的客户端.
 
 - 最后构造成统一的响应.
-
 ```java
 private Response process(Request request, Socket clientSocket) throws
 
@@ -5446,35 +4796,22 @@ sessions.get(basicConsumeArguments.getChannelId());
 ```
 
 端已经关闭!");
-
                        }
-    
                        // 2. 构造响应数据
     
                        SubScribeReturns subScribeReturns = new
 
 SubScribeReturns();
-
 subScribeReturns.setChannelId(basicConsumeArguments.getChannelId());
-
                        subScribeReturns.setConsumerTag(consumerTag);
-    
                        subScribeReturns.setBasicProperties(properties);
-    
                        subScribeReturns.setBody(body);
-    
                        byte[] payload = BinaryTool.toBytes(subScribeReturns);
-    
                        // 3. 写入到对应 socket 中
-    
                         Response response = new Response();
-    
                         response.setType(0xc);
-    
                         response.setLength(payload.length);
-    
                         response.setPayload(payload);
-    
                         // 此处不应该关闭 DataOutputStream, 关闭这个会导致内部持有
 
 的 clientSocket.getOutputStream 被关闭.
@@ -5482,13 +4819,9 @@ subScribeReturns.setChannelId(basicConsumeArguments.getChannelId());
                         DataOutputStream dataOutputStream = new
 
 DataOutputStream(clientSocket.getOutputStream());
-
                         writeResponse(dataOutputStream, response);
-    
                     }
-    
                 });
-    
     } else if (request.getType() == 0xb) {
     
         // 确认 ack
@@ -5497,48 +4830,30 @@ DataOutputStream(clientSocket.getOutputStream());
 
 baseArguments;
 
-        ok = virtualHost.basicAck(basicAckArguments.getQueueName(),
-
-basicAckArguments.getMessageId());
-
+                ok = virtualHost.basicAck(basicAckArguments.getQueueName(), basicAckArguments.getMessageId());
     } else {
     
         throw new MqException("[BrokerServer] 未知的请求 type ! type=" +
 
 request.getType());
-
    }
-
    // 3. 构造响应.
-
     BaseReturns baseReturns = new BaseReturns();
-    
     baseReturns.setRid(baseArguments.getRid());
-    
     baseReturns.setChannelId(baseArguments.getChannelId());
-    
     baseReturns.setOk(ok);
-    
     byte[] payload = BinaryTool.toBytes(baseReturns);
-    
     Response response = new Response();
-    
     response.setType(request.getType());
-    
     response.setLength(payload.length);
-    
     response.setPayload(payload);
     
-    System.out.println("[Response] rid=" + baseReturns.getRid() + ",
-
-channelId=" + baseReturns.getChannelId()
-
+        System.out.println("[Response] rid=" + baseReturns.getRid() + ", channelId=" + baseReturns.getChannelId()
+    
             + ", type=" + response.getType() + ", length=" +
 
 response.getLength());
-
     return response;
-
 }
 
 实现 clearClosedSession
@@ -5548,7 +4863,6 @@ response.getLength());
 行清理.
 
 - 注意迭代器失效问题.
-
 ```java
 private void clearClosedSession(Socket clientSocket) {
 
@@ -5590,7 +4904,6 @@ toDeleteChannelId);
 用来创建连接的工厂类.
 
 - 当前没有实现用户认证和多虚拟主机, 用户名密码可以暂时先不要.
-
 ```java
 public class ConnectionFactory {
 
@@ -5630,7 +4943,6 @@ Connection 和 Channel 的定义
 一个 Connection 可以包含多个 Channel
 
 ### 1) Connection 的定义
-
 ```java
 public class Connection {
 
@@ -5666,7 +4978,6 @@ DataOutputStream 均为 socket 通信的接口.
 - callbackPool 是用来在客户端这边执行用户回调的线程池.
 
 ### 2) Channel 的定义
-
 ```java
 public class Channel {
 
@@ -5708,7 +5019,6 @@ ConcurrentHashMap<>();
 在 Connection 中, 实现下列方法
 
 // 读取响应应该在另外一个单独的线程中完成.
-
 ```java
 public void writeRequest(Request request) throws IOException {
 
@@ -5758,7 +5068,6 @@ length=" + response.getLength());
 创建 channel
 
 在 Connection 中, 定义下列方法来创建一个 channel
-
 ```java
 public Channel createChannel() throws IOException {
 
@@ -5774,23 +5083,15 @@ public Channel createChannel() throws IOException {
 不到结果了
 
     channelMap.put(channelId, channel);
-    
     boolean ok = channel.createChannel();
-    
     if (!ok) {
     
         // 服务器返回创建 channel 失败!
-    
         // 把 channelId 删除掉即可
-    
         channelMap.remove(channelId);
-    
         return null;
-    
     }
-    
     return channel;
-
 }
 
 发送请求
@@ -5798,7 +5099,6 @@ public Channel createChannel() throws IOException {
 通过 Channel 提供请求的发送操作.
 
 ### 1) 创建 channel
-
 ```java
 public boolean createChannel() throws IOException {
 
@@ -5830,7 +5130,6 @@ public boolean createChannel() throws IOException {
 ```
 
 generateRid 的实现
-
 ```java
 private String generateRid() {
 
@@ -5842,7 +5141,6 @@ private String generateRid() {
 waitResult 的实现
 
 - 由于服务器的响应是异步的. 此处通过 waitResult 实现同步等待的效果.
-
 ```java
 private BaseReturns waitResult(String rid){
 
@@ -5876,7 +5174,6 @@ private BaseReturns waitResult(String rid){
 ```
 
 ### 2) 关闭 channel
-
 ```java
 public boolean close() throws IOException {
 
@@ -5886,33 +5183,20 @@ public boolean close() throws IOException {
 时候统一回收.
 
     BaseArguments baseArguments = new BaseArguments();
-    
     baseArguments.setRid(generateRid());
-    
     baseArguments.setChannelId(channelId);
-    
     byte[] payload = BinaryTool.toBytes(baseArguments);
-    
     Request request = new Request();
-    
     request.setType(0x2);
-    
     request.setLength(payload.length);
-    
     request.setPayload(payload);
-    
     connection.writeRequest(request);
-    
     // 阻塞等待服务器的响应
-    
     BaseReturns baseReturns = waitResult(baseArguments.getRid());
-    
     return baseReturns.isOk();
-
 }
 
 ### 3) 创建交换机
-
 ```java
 public boolean exchangeDeclare(String exchangeName, ExchangeType exchangeType,
 
@@ -5960,7 +5244,6 @@ ExchangeDeclareArguments();
 ```
 
 ### 4) 删除交换机
-
 ```java
 public boolean exchangeDelete(String exchangeName) throws IOException {
 
@@ -5996,7 +5279,6 @@ ExchangeDeleteArguments();
 ```
 
 ### 5) 创建队列
-
 ```java
 public boolean queueDeclare(String queueName, boolean durable, boolean
 
@@ -6042,7 +5324,6 @@ exclusive, boolean autoDelete,
 ```
 
 ### 6) 删除队列
-
 ```java
 public boolean queueDelete(String queueName) throws IOException {
 
@@ -6078,7 +5359,6 @@ public boolean queueDelete(String queueName) throws IOException {
 ### 7) 创建绑定
 
 // 对于直接交换机和 fanout 交换机, bindingKey 不生效. 直接设为 "" 即可
-
 ```java
 public boolean queueBind(String queueName, String exchangeName) throws
 
@@ -6126,7 +5406,6 @@ bindingKey) throws IOException {
 ```
 
 ### 8) 删除绑定
-
 ```java
 public boolean queueUnbind(String queueName, String exchangeName) throws
 
@@ -6164,7 +5443,6 @@ IOException {
 ```
 
 ### 9) 发送消息
-
 ```java
 public boolean basicPublish(String exchangeName, String routingKey,
 
@@ -6206,7 +5484,6 @@ BasicProperties basicProperties, byte[] body) throws IOException {
 ```
 
 ### 10) 订阅消息
-
 ```java
 public boolean basicConsume(String queueName, boolean autoAck, Consumer
 
@@ -6260,7 +5537,6 @@ consumer) throws IOException, MqException {
 ```
 
 ### 11) 确认消息
-
 ```java
 public boolean basicAck(String queueName, String messageId) throws IOException
 
@@ -6308,7 +5584,6 @@ public boolean basicAck(String queueName, String messageId) throws IOException
 创建一个扫描线程, 用来不停的读取 socket 中的响应数据.
 
 注意: 一个 Connection 中可能包含多个 channel, 需要把响应分别放到对应的 channel 中.
-
 ```java
 public Connection(String host, int port) throws IOException {
 
@@ -6363,12 +5638,7 @@ public Connection(String host, int port) throws IOException {
 
 - 针对服务器返回的控制响应和消息响应, 分别处理.
 
-◦
-如果是订阅数据, 则调用 channel 中的回调.
-
-◦
-如果是控制消息, 直接放到结果集合中.
-
+◦ 如果是订阅数据, 则调用 channel 中的回调. ◦ 如果是控制消息, 直接放到结果集合中.
 ```java
 private void dispatchResponse(Response response) throws IOException,
 
@@ -6456,7 +5726,6 @@ baseReturns.getChannelId());
 ### 3) 实现 channel.putReturns
 
 把响应放到响应的 hash 表中, 同时唤醒等待响应的线程去消费.
-
 ```java
 public void putReturns(BaseReturns baseReturns) {
 
@@ -6476,7 +5745,6 @@ public void putReturns(BaseReturns baseReturns) {
 关闭 Connection
 
 给 Connection 实现 close 方法
-
 ```java
 public void close() {
 
@@ -6504,7 +5772,6 @@ public void close() {
 测试客户端-服务器
 
 创建 MqClientTests
-
 ```java
 public class MqClientTests {
 
@@ -6584,7 +5851,6 @@ SpringApplication.run(JavaMessageQueueApplication.class);
 ```
 
 编写测试用例
-
 ```java
 @Test
 
@@ -6734,11 +6000,8 @@ true, false, null);
 带有完整 basicProperties 的.
 
     ok = channel.basicPublish("testExchange", "testQueue", null, requestBody);
-    
     Assertions.assertTrue(ok);
-    
     ok = channel.basicConsume("testQueue", true, new Consumer() {
-
 ```java
         @Override
 
@@ -6962,7 +6225,6 @@ responseBody.length);
 ## 十四. 案例: 基于 MQ 的生产者消费者模型
 
 生产者:
-
 ```java
 public class DemoProducer {
 
@@ -7008,7 +6270,6 @@ body);
 ```
 
 消费者:
-
 ```java
 public class DemoConsumer {
 
