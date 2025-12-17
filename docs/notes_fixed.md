@@ -380,8 +380,7 @@ SQLite 只是一个动态库(当然, 官方也提供了可执行程序 exe), 我
 配置数据源 application.yml
 
 ```yaml
-spring: datasource: url: jdbc:sqlite:./data/meta.db username: password:
-    driver-class-name: org.sqlite.JDBC
+spring: datasource: url: jdbc:sqlite:./data/meta.db username: password: driver-class-name: org.sqlite.JDBC
 
 mybatis: mapper-locations: classpath:mapper/**Mapper.xml
 ```
@@ -401,8 +400,7 @@ SQLite 只是把数据单纯的存储到一个文件中. 非常简单方便.
 实现创建表
 
 ```java
-@Mapper
-public interface MetaMapper {
+@Mapper public interface MetaMapper {
     void createUserTable();
     void createExchangeTable();
     void createQueueTable();
@@ -413,12 +411,10 @@ public interface MetaMapper {
 本身 MyBatis 针对 MySQL / Oracle 支持执行多个 SQL 语句的, 但是针对 SQLite 是不支持的, 只能写成多个方法.
 
 ```xml
-<update id="createExchangeTable"> create table if not exists exchange ( name varchar(50) primary key, type int,                       -- 0 表示 direct, 1 表示 fanout, 2 表示 topic durable boolean,                -- false 表示不持久化, true 表示持久化.
-                autoDelete boolean,             -- false 表示不自动删除, true 表示自动删除. arguments varchar(1024)         -- 创建交换机指定的参数 );
+<update id="createExchangeTable"> create table if not exists exchange ( name varchar(50) primary key, type int,                       -- 0 表示 direct, 1 表示 fanout, 2 表示 topic durable boolean,                -- false 表示不持久化, true 表示持久化. autoDelete boolean,             -- false 表示不自动删除, true 表示自动删除. arguments varchar(1024)         -- 创建交换机指定的参数 );
 </update>
 
-<update id="createQueueTable"> create table if not exists queue ( name varchar(50) primary key, durable boolean,                -- false 表示不持久化, true 表示持久化. autoDelete boolean,             -- false 表示不自动删除, true 表示自动删除.
-                arguments varchar(1024)         -- 创建交换机指定的参数 );
+<update id="createQueueTable"> create table if not exists queue ( name varchar(50) primary key, durable boolean,                -- false 表示不持久化, true 表示持久化. autoDelete boolean,             -- false 表示不自动删除, true 表示自动删除. arguments varchar(1024)         -- 创建交换机指定的参数 );
 </update>
 
 <update id="createBindingTable"> create table if not exists binding ( exchangeName varchar(50), queueName varchar(50), bindingKey varchar(256)
@@ -430,17 +426,14 @@ public interface MetaMapper {
 
 给 mapper.MetaMapper  中添加
 
+```java
 void insertExchange(Exchange exchange);
-
 void deleteExchange(String exchangeName);
-
 void insertQueue(MSGQueue msgQueue);
-
 void deleteQueue(String queueName);
-
 void insertBinding(Binding binding);
-
 void deleteBinding(Binding binding);
+```
 
 > 对于**交换机**和**队列**这两个表，由于使用name作为主键，直接按照name进行删除即可
 >
@@ -501,10 +494,8 @@ public class DataBaseManager {
 
 针对 JavaMessageQueueApplication, 需要新增一个 ac 属性. 并初始化
 
-@SpringBootApplication
-
 ```java
-public class JavaMessageQueueApplication {
+@SpringBootApplication public class JavaMessageQueueApplication {
     public static ConfigurableApplicationContext ac;
     public static void main(String[] args) throws IOException {
         ac = SpringApplication.run(JavaMessageQueueApplication.class);
@@ -596,24 +587,20 @@ public List<Binding> selectAllBindings() {
 ### 1) 准备工作
 
 ```java
-@SpringBootTest
-public class DataBaseManagerTests {
+@SpringBootTest public class DataBaseManagerTests {
     private static DataBaseManager dataBaseManager = new DataBaseManager();
 
-    @BeforeAll
-    public static void setupAll() throws IOException {
+    @BeforeAll public static void setupAll() throws IOException {
                 // 初始情况下, 先统一清除数据库 dataBaseManager.deleteDB();
     }
 
-    @BeforeEach
-    public void setUp() throws IOException {
+    @BeforeEach public void setUp() throws IOException {
         // 每次运行一个用例, 都重置数据库. 防止用例之间的数据相互干扰.
                 // 需要初始化 ac 对象 JavaMessageQueueApplication.ac = SpringApplication.run(JavaMessageQueueApplication.class);
                 // 再初始化数据库 dataBaseManager.init();
     }
 
-    @AfterEach
-    public void tearDown() throws IOException {
+    @AfterEach public void tearDown() throws IOException {
                 // 需要关闭 ac 对象 JavaMessageQueueApplication.ac.close();
                 // 然后再删除数据库 dataBaseManager.deleteDB();
     }
@@ -647,8 +634,7 @@ Spring 服务的初始化.
 - 要确保每个用例的执行都是 "clean" 的, 也就是该用例不会被上个用例干扰到.
 
 ```java
-@Test
-public void testInitTable() throws IOException {
+@Test public void testInitTable() throws IOException {
     List<Exchange> exchangeList = dataBaseManager.selectAllExchanges();
     List<MSGQueue> queueList = dataBaseManager.selectAllQueues();
     List<Binding> bindingList = dataBaseManager.selectAllBindings();
@@ -671,8 +657,7 @@ private Exchange createTestExchange(String exchangeName) {
     return exchange;
 }
 
-@Test
-public void testInsertExchange() {
+@Test public void testInsertExchange() {
     Exchange exchange = createTestExchange("test");
     dataBaseManager.insertExchange(exchange);
     List<Exchange> exchangeList = dataBaseManager.selectAllExchanges();
@@ -685,8 +670,7 @@ public void testInsertExchange() {
     Assertions.assertEquals("222", exchangeList.get(1).getArgument("bbb"));
 }
 
-@Test
-public void testDeleteExchange() {
+@Test public void testDeleteExchange() {
     Exchange exchange = createTestExchange("test");
     dataBaseManager.insertExchange(exchange);
     List<Exchange> exchangeList = dataBaseManager.selectAllExchanges();
@@ -710,8 +694,7 @@ private MSGQueue createTestQueue(String queueName) {
     return queue;
 }
 
-@Test
-public void testInsertQueue() {
+@Test public void testInsertQueue() {
     MSGQueue queue = createTestQueue("test");
     dataBaseManager.insertQueue(queue);
     List<MSGQueue> queueList = dataBaseManager.selectAllQueues();
@@ -724,8 +707,7 @@ public void testInsertQueue() {
     Assertions.assertEquals("222", queueList.get(0).getArgument("bbb"));
 }
 
-@Test
-public void testDeleteQueue() {
+@Test public void testDeleteQueue() {
     MSGQueue queue = createTestQueue("test");
     dataBaseManager.insertQueue(queue);
     List<MSGQueue> queueList = dataBaseManager.selectAllQueues();
@@ -736,8 +718,7 @@ public void testDeleteQueue() {
     Assertions.assertEquals(0, queueList.size());
 }
 
-@Test
-public void testInsertBinding() {
+@Test public void testInsertBinding() {
     Binding binding = new Binding();
     binding.setQueueName("testQueue");
     binding.setExchangeName("testExchange");
@@ -750,8 +731,7 @@ public void testInsertBinding() {
     Assertions.assertEquals("testBindingKey", bindingList.get(0).getBindingKey());
 }
 
-@Test
-public void testDeleteBinding() {
+@Test public void testDeleteBinding() {
     Binding binding = new Binding();
     binding.setQueueName("testQueue");
     binding.setExchangeName("testExchange");
@@ -1273,27 +1253,23 @@ Rabbitmq 本体是这样实现的. 但是咱们此处为了实现简单, 就不�
 - 使用 ReflectionTestUtils.invokeMethod  来调用私有方法.
 
 ```java
-@SpringBootTest
-public class MessageFileManagerTests {
+@SpringBootTest public class MessageFileManagerTests {
     private String queueName1 = "testQueue1";
     private String queueName2 = "testQueue2";
     private MessageFileManager messageFileManager = new MessageFileManager();
 
-    @BeforeEach
-    public void setUp() throws IOException {
+    @BeforeEach public void setUp() throws IOException {
         messageFileManager.createQueueFiles(queueName1);
         messageFileManager.createQueueFiles(queueName2);
     }
 
-    @AfterEach
-    public void tearDown() throws IOException {
+    @AfterEach public void tearDown() throws IOException {
         messageFileManager.destroyQueueFiles(queueName1);
         messageFileManager.destroyQueueFiles(queueName2);
     }
 }
 
-@Test
-public void testCreateFile() {
+@Test public void testCreateFile() {
     File queueDataFile1 = new File("./data/" + queueName1 + "/queue_data.txt");
     Assertions.assertEquals(true, queueDataFile1.isFile());
     File queueStatFile1 = new File("./data/" + queueName1 + "/queue_stat.txt");
@@ -1306,8 +1282,7 @@ public void testCreateFile() {
     Assertions.assertTrue(queueStatFile2.length() > 0);
 }
 
-@Test
-public void testReadWriteStat() {
+@Test public void testReadWriteStat() {
     MessageFileManager.Stat stat = new MessageFileManager.Stat();
     stat.totalCount = 100;
     stat.validCount = 50;
@@ -1337,8 +1312,7 @@ private Message createTestMessage(String content) {
     return message;
 }
 
-@Test
-public void testSendMessage() throws IOException, MqException, ClassNotFoundException {
+@Test public void testSendMessage() throws IOException, MqException, ClassNotFoundException {
     Message message = createTestMessage("testMessage");
     MSGQueue queue = createTestQueue(queueName1);
     messageFileManager.sendMessage(queue, message);
@@ -1354,8 +1328,7 @@ public void testSendMessage() throws IOException, MqException, ClassNotFoundExce
     Assertions.assertArrayEquals(message.getBody(), curMessage.getBody());
 }
 
-@Test
-public void testLoadAllMessageFromQueue() throws IOException, MqException, ClassNotFoundException {
+@Test public void testLoadAllMessageFromQueue() throws IOException, MqException, ClassNotFoundException {
     MSGQueue queue = createTestQueue(queueName1);
     List<Message> expectedMessages = new ArrayList<>();
     for (int i = 0; i < 100; i++) {
@@ -1377,8 +1350,7 @@ public void testLoadAllMessageFromQueue() throws IOException, MqException, Class
     }
 }
 
-@Test
-public void testDeleteMessage() throws IOException, MqException, ClassNotFoundException {
+@Test public void testDeleteMessage() throws IOException, MqException, ClassNotFoundException {
     MSGQueue queue = createTestQueue(queueName1);
     List<Message> expectedMessages = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
@@ -1398,8 +1370,7 @@ public void testDeleteMessage() throws IOException, MqException, ClassNotFoundEx
     }
 }
 
-@Test
-public void testGc() throws IOException, MqException, ClassNotFoundException {
+@Test public void testGc() throws IOException, MqException, ClassNotFoundException {
     MSGQueue queue = createTestQueue(queueName1);
     List<Message> expectedMessages = new ArrayList<>();
     // 创建 100 个元素
@@ -2403,7 +2374,7 @@ public boolean queueBind(String queueName, String exchangeName, String bindingKe
                 System.out.println("[VirtualHost] 创建绑定成功! exchangeName=" + exchangeName + ", queueName=" + queueName);
                return true;
              }
-        }   
+        }
    } catch (Exception e) {
 
        System.out.println("[VirtualHost] 创建绑定失败! exchangeName=" + exchangeName + ", queueName=" + queueName);
@@ -2537,12 +2508,14 @@ exchangeName);
                // 2) 构造消息对象. 针对每次写入队列, 都构造一个唯一的消息对象 id. 使同一个消息, 在不同队列中也能有不同的消息 id.
                 //    如果两个队列中的消息 id 一样, 此时就可能在 messageMap 中只存在一份消息, 而在 queueMessageMap 中存在多份消息.
                 //    此时针对消息进行消费操作, 就可能出现一个队列消费了之后, 把消息从 messageMap 删除了; 第二次再从另一个队列消费
-                                //    的时候, 就无法从 messageMap 中获取到消息了. Message message = Message.createMessageWithId(routingKey, basicProperties, body);
+                //    的时候, 就无法从 messageMap 中获取到消息了.
+                Message message = Message.createMessageWithId(routingKey, basicProperties, body);
                 // 3) 判定能否转发
                 if (!router.route(exchange.getType(), binding, message)) {
                     continue;
                 }
-                                // 4) 真正转发消息 sendMessage(queue, message);
+                // 4) 真正转发消息
+                sendMessage(queue, message);
             }
         }
         return true;
@@ -2552,30 +2525,20 @@ exchangeName);
        return false;
     }
 }
+```
 
 ```java
 private void sendMessage(MSGQueue queue, Message message) throws Exception {
-
    // 1. 先写硬盘
-
     //    deliverMode 为 1, 表示不持久化; 为 2 表示持久化. AMQP 协议规定的.
-
     int deliveryMode = message.getBasicProperties().getDeliveryMode();
-
     if (deliveryMode == 2) {
-
         diskDataCenter.sendMessage(queue, message);
-
     }
-
     // 2. 再写内存
-
     memoryDataCenter.sendMessage(queue, message);
-
     // 3. 通知消费者去取消息
-
     consumerManager.notifyConsume(queue.getName());
-
 }
 ```
 
@@ -2586,41 +2549,22 @@ private void sendMessage(MSGQueue queue, Message message) throws Exception {
 ### 1) 实现 route 方法
 ```java
 public class Router {
-
-   public boolean route(ExchangeType exchangeType, Binding binding, Message
-
-message) throws MqException {
-
+   public boolean route(ExchangeType exchangeType, Binding binding, Message message) throws MqException {
        // 根据不同的 exchangeType 进行不同的转发逻辑
-
         // DIRECT 的转发逻辑已经在外部判定过.
-
         if (exchangeType == ExchangeType.FANOUT) {
-
             return routeFanout(binding, message);
-
         } else if (exchangeType == ExchangeType.TOPIC) {
-
             return routeTopic(binding, message);
-
         } else {
-
-            throw new MqException("[VirtualHost] 未知的 exchangeType!
-
-exchangeType=" + exchangeType);
-
+            throw new MqException("[VirtualHost] 未知的 exchangeType! exchangeType=" + exchangeType);
        }
-
    }
 
    private boolean routeFanout(Binding binding, Message message) {
-
        // 对于 fanout 类型, 直接转发, 不需要进行任何匹配.
-
         return true;
-
     }
-
 }
 ```
 
@@ -2974,49 +2918,31 @@ false
 
        } else {
 
-           // 1. 如果是普通字符, 直接匹配内容是否相等, 不相等则返回 false, 相等直接进
+           // 1. 如果是普通字符, 直接匹配内容是否相等, 不相等则返回 false, 相等直接进入下一轮
+            if(!bindingTokens[bindingIndex].equals(routingTokens[routingIndex])) 
+                            return false;
+        }
+        bindingIndex++;
+        routingIndex++;
+    }
+}
+// 如果两方不能同时结束, 则也视为匹配失败.
+// 比如 aaa.*.bbb 和 aaa.bbb
+if (bindingIndex == bindingTokens.length && routingIndex == routingTokens.length) {
+    return true;
+}
+return false;
+}
 ```
 
-入下一轮
-
-            if
-
-(!bindingTokens[bindingIndex].equals(routingTokens[routingIndex])) {
-
-                return false;
-            }
-            bindingIndex++;
-            routingIndex++;
-        }
-    }
-    // 如果两方不能同时结束, 则也视为匹配失败.
-    // 比如 aaa.*.bbb 和 aaa.bbb
-    
-    if (bindingIndex == bindingTokens.length && routingIndex ==
-
-routingTokens.length) {
-
-        return true;
-    }
-    return false;
-}
 ```java
-private int findNextMatch(String[] routingTokens, int routingIndex, String
-
-bindingToken) {
-
+private int findNextMatch(String[] routingTokens, int routingIndex, String bindingToken) {
     for (int i = routingIndex; i < routingTokens.length; i++) {
-
         if (routingTokens[i].equals(bindingToken)) {
-
             return i;
-
         }
-
     }
-
     return -1;
-
 }
 ```
 
@@ -3323,8 +3249,8 @@ consumer);
 
 创建 ConsumerEnv , 这个类表示一个订阅者的执行环境.
 
-// 表示一个消费者的上下文环境
 ```java
+// 表示一个消费者的上下文环境
 public class ConsumerEnv {
 
     private String consumerTag;
@@ -3356,8 +3282,8 @@ Consumer consumer) {
 
 给 MsgQueue  添加一个订阅者列表.
 
-// 该队列被哪些消费者订阅
 ```java
+// 该队列被哪些消费者订阅
 private List<ConsumerEnv> consumerEnvList = new ArrayList<>();
 
 // 轮询序号
@@ -3519,7 +3445,7 @@ parent.getMemoryDataCenter().removeMessageWaitAck(msgQueue.getName(), message.ge
 parent.getMemoryDataCenter().removeMessage(message.getMessageId());
             }
         } catch (MqException | IOException | ClassNotFoundException e) {
-    
+
             e.printStackTrace();
         }
     });
@@ -4798,7 +4724,7 @@ sessions.get(basicConsumeArguments.getChannelId());
 端已经关闭!");
                        }
                        // 2. 构造响应数据
-    
+
                        SubScribeReturns subScribeReturns = new
 
 SubScribeReturns();
@@ -4823,7 +4749,7 @@ DataOutputStream(clientSocket.getOutputStream());
                     }
                 });
     } else if (request.getType() == 0xb) {
-    
+
         // 确认 ack
     
         BasicAckArguments basicAckArguments = (BasicAckArguments)
@@ -4847,7 +4773,7 @@ request.getType());
     response.setType(request.getType());
     response.setLength(payload.length);
     response.setPayload(payload);
-    
+
         System.out.println("[Response] rid=" + baseReturns.getRid() + ", channelId=" + baseReturns.getChannelId()
     
             + ", type=" + response.getType() + ", length=" +
