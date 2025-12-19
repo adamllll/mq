@@ -115,51 +115,79 @@ public class Router {
             throw new MqException("[Router] 交换机类型不存在！exchangeType: " + exchangeType);
         }
     }
-
+        // [测试用例]
+        // binding key          routing key         result
+        // aaa                  aaa                 true
+        // aaa.bbb              aaa.bbb             true
+        // aaa.bbb              aaa.bbb.ccc         false
+        // aaa.bbb              aaa.ccc             false
+        // aaa.bbb.ccc          aaa.bbb.ccc         true
+        // aaa.*                aaa.bbb             true
+        // aaa.*.bbb            aaa.bbb.ccc         false
+        // *.aaa.bbb            aaa.bbb             false
+        // #                    aaa.bbb.ccc         true
+        // aaa.#                aaa.bbb             true
+        // aaa.#                aaa.bbb.ccc         true
+        // aaa.#.ccc            aaa.ccc             true
+        // aaa.#.ccc            aaa.bbb.ccc         true
+        // aaa.#.ccc            aaa.aaa.bbb.ccc     true
+        // #.ccc                ccc                 true
+        // #.ccc                aaa.bbb.ccc         true
     private boolean routeTopic(Binding binding, Message message) {
         // 先把这两个key进行切分
         String[] bindingTokens = binding.getBindingKey().split("\\.");
         String[] routingTokens = message.getRoutingKey().split("\\.");
         // 引入两个下标，指向上述两个数组，初始情况下都为0
-        int bindingIdex = 0;
-        int routingIdex = 0;
+        int bindingIndex = 0;
+        int routingIndex = 0;
         // 此处使用while更合适，每次循环下标不一定就是+1
-        while (bindingIdex < routingTokens.length && routingIdex < routingTokens.length) {
-            if (bindingTokens[bindingIdex].equals("*")) {
-                // 遇到*直接进入下一个，表示匹配任意单词
-                bindingIdex++;
-                routingIdex++;
+        while (bindingIndex < bindingTokens.length && routingIndex < routingTokens.length) {
+            if (bindingTokens[bindingIndex].equals("*")) {
+                // [情况2]遇到*直接进入下一个，表示匹配任意单词
+                bindingIndex++;
+                routingIndex++;
                 continue;
-            }else if (bindingTokens[bindingIdex].equals("#")) {
+            }else if (bindingTokens[bindingIndex].equals("#")) {
                 // 遇到#，需要先判定有没有下一个位置
-                bindingIdex++;
-                if (bindingIdex == bindingTokens.length) {
-                    // #在最后一个位置，表示匹配剩余所有单词，直接返回true
+                bindingIndex++;
+                if (bindingIndex == bindingTokens.length) {
+                    // [情况3]#在最后一个位置，表示匹配剩余所有单词，直接返回true
                     return true;
                 }
-                // #不是最后一个位置，需要继续匹配下一个单词
-                // findNextMatch方法用于在routingTokens中找到下一个和bindingTokens[bindingIdex]匹配的位置,没找到返回-1
-                routingIdex = findNextMatch(routingTokens, routingIdex, bindingTokens, bindingIdex);
-                if (routingIdex == -1) {
+                // [情况4]#不是最后一个位置，需要继续匹配下一个单词
+                // findNextMatch方法用于在routingTokens中找到下一个和bindingTokens[bindingIndex]匹配的位置,没找到返回-1
+                routingIndex = findNextMatch(routingTokens, routingIndex, bindingTokens[bindingIndex]);
+                if (routingIndex == -1) {
                     // 没有找到匹配的位置，直接返回false
                     return false;
                 }
                 // 找到了匹配的位置，继续进行下一轮匹配
-                bindingIdex++;
-                routingIdex++;
+                bindingIndex++;
+                routingIndex++;
             }else {
                 // 普通字符串，要求两边的内容是一样的
-                if (!bindingTokens[bindingIdex].equals(routingTokens[routingIdex])) {
+                if (!bindingTokens[bindingIndex].equals(routingTokens[routingIndex])) {
                     return false;
                 }
-                bindingIdex++;
-                routingIdex++;
+                bindingIndex++;
+                routingIndex++;
             }
         }
-        return true;
+        // [情况5]判定是否是双方同时到达末尾
+        // 比如aaa.bbb.ccc 和 aaa.bbb 是匹配失败的
+        if (bindingIndex == bindingTokens.length && routingIndex == routingTokens.length) {
+            return true;
+        }
+        return false;
     }
 
-    private int findNextMatch(String[] routingTokens, int routingIdex, String[] bindingTokens, int bindingIdex) {
-
+    // 在routingTokens中找到下一个和bindingTokens[bindingIdex]匹配的位置,没找到返回-1
+    private int findNextMatch(String[] routingTokens, int routingIndex, String bindingToken) {
+        for (int i = routingIndex; i < routingTokens.length; i++) {
+            if (routingTokens[i].equals(bindingToken)) {
+                return i;
+            }
+        }
+        return -1;
     }
 }

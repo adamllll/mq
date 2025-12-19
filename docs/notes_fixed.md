@@ -2644,77 +2644,40 @@ bindingKey 为 a.#.b, 可以匹配 routingKey 为 a.a.b 和 a.b.b 和 a.aaa.b �
    // 需要考虑通配符, 复杂一些
 ```java
     public boolean checkBindingKeyValid(String bindingKey) {
-
         // 1. 允许是空字符串
-
         // 2. 数字字母下划线构成
-
         // 3. 可以包含通配符
-
         // 4. # 不能连续出现.
-
         // 5. # 和 * 不能相邻
-
         if (bindingKey.length() == 0) {
-
             return true;
-
         }
-
         // 先判定基础构成
-
         for (int i = 0; i < bindingKey.length(); i++) {
-
             char ch = bindingKey.charAt(i);
-
             if (ch >= 'A' && ch <= 'Z') {
-
                 continue;
-
             }
-
             if (ch >= 'a' && ch <= 'z') {
-
                 continue;
-
             }
-
             if (ch >= '0' && ch <= '9') {
-
                 continue;
-
             }
-
             if (ch == '.' || ch == '_' || ch == '*' || ch == '#') {
-
                 continue;
-
             }
-
             return false;
-
         }
-
         // 再判定每个词的情况
-
         // 比如 aaa.a*a 这种应该视为非法.
-
         String[] words = bindingKey.split("\\.");
-
         for (String word : words) {
-
-            if (word.length() > 1 && (word.contains("*") ||
-
-word.contains("#"))) {
-
+            if (word.length() > 1 && (word.contains("*") || word.contains("#"))) {
                 return false;
-
             }
-
         }
-
         // 再判定相邻词的情况
-
         for (int i = 0; i < words.length - 1; i++) {
 
            // 连续两个 ##
@@ -2898,9 +2861,7 @@ routingTokens.length) {
 
             // 4. 如果遇到 # , 则找到 # 下一个位置的 token 在 routingKey 中的位置.
 
-            routingIndex = findNextMatch(routingTokens, routingIndex,
-
-bindingTokens[bindingIndex]);
+            routingIndex = findNextMatch(routingTokens, routingIndex, bindingTokens[bindingIndex]);
 
             // 5. 如果能找到对应的位置了, 就可以继续下一轮匹配. 如果找不到, 就返回
 
@@ -3110,10 +3071,10 @@ public void test() throws MqException {
 
 ### 1) 添加一个订阅者
 
+```java
 // 订阅消息
 // 如果是多个消费者消费一个队列, 将使用轮询的方式进行消费.
 // 参数的 consumerTag 应该在网络通信部分设定.
-```java
 public boolean basicConsume(String consumerTag, String queueName, boolean
 
 autoAck, Consumer consumer) {
@@ -3150,7 +3111,6 @@ queueName);
 Consumer 相当于一个回调函数. 放到 common.Consumer  中.
 ```java
 @FunctionalInterface
-
 public interface Consumer {
 
    // consumerTag 消费者标识, 后面使用 channelId 填充.
@@ -3248,6 +3208,10 @@ consumer);
 ```
 
 创建 ConsumerEnv , 这个类表示一个订阅者的执行环境.
+
+![image-20251218143540484](./notes_fixed.assets/image-20251218143540484.png)
+
+![image-20251218143553376](./notes_fixed.assets/image-20251218143553376.png)
 
 ```java
 // 表示一个消费者的上下文环境
@@ -3418,38 +3382,30 @@ msgQueue.getName() + ", messageId=" + message.getMessageId());
 
             // 1. 先把消息放到待确认队列中
 
-            //    (这个逻辑必须放到执行回调前面. 如果是 autoAck false, 在回调内部会调
-```
+            //    (这个逻辑必须放到执行回调前面. 如果是 autoAck false, 在回调内部会调用 basicAck, 执行彻底删除. 需要先放到待确认队列, 才能彻底删除)
+                                parent.getMemoryDataCenter().addMessageWaitAck(msgQueue.getName(), message);
+        // 2. 调用消费者的回调. 如果回调抛出异常了, 则不会对消息进行任何 ack 操作.
+        //    相当于消息仍然处在待消费的状态.
 
-用 basicAck, 执行彻底删除. 需要先放到待确认队列, 才能彻底删除)
+                    luckyDog.getConsumer().handleDelivery(luckyDog.getConsumerTag(), message.getBasicProperties(), message.getBody());
+        // 3. 如果消息是自动确认, 则可以直接把消息彻底删除了.
+        //    (这个逻辑必须放到执行回调后面. 万一执行回调一半服务器崩溃, 这个消息仍然存在于硬盘上, 下次启动还可以被继续消费到)
+                    if (luckyDog.isAutoAck()) {
 
-                        parent.getMemoryDataCenter().addMessageWaitAck(msgQueue.getName(), message);
-            // 2. 调用消费者的回调. 如果回调抛出异常了, 则不会对消息进行任何 ack 操作.
-            //    相当于消息仍然处在待消费的状态.
-    
-                        luckyDog.getConsumer().handleDelivery(luckyDog.getConsumerTag(), message.getBasicProperties(), message.getBody());
-            // 3. 如果消息是自动确认, 则可以直接把消息彻底删除了.
-            //    (这个逻辑必须放到执行回调后面. 万一执行回调一半服务器崩溃, 这个消息仍
+            //  则修改硬盘上的消息为 "无效". 同时删除内存中的消息
+            if (message.getDeliveryMode() == 2) {
 
-然存在于硬盘上, 下次启动还可以被继续消费到)
-
-            if (luckyDog.isAutoAck()) {
-    
-                //  则修改硬盘上的消息为 "无效". 同时删除内存中的消息
-                if (message.getDeliveryMode() == 2) {
-    
-                                        parent.getDiskDataCenter().deleteMessage(msgQueue, message);
-                }
-
-parent.getMemoryDataCenter().removeMessageWaitAck(msgQueue.getName(), message.getMessageId());
+                                    parent.getDiskDataCenter().deleteMessage(msgQueue, message);
+            }
+            parent.getMemoryDataCenter().removeMessageWaitAck(msgQueue.getName(), message.getMessageId());
 parent.getMemoryDataCenter().removeMessage(message.getMessageId());
             }
         } catch (MqException | IOException | ClassNotFoundException e) {
-
-            e.printStackTrace();
-        }
-    });
+                    e.printStackTrace();
+    }
+});
 }
+```
 
 注意: 一个队列可能有 N 个消费者, 此处应该按照轮询的方式挑一个消费者进行消费.
 

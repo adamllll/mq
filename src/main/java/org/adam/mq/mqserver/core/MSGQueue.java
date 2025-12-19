@@ -2,9 +2,14 @@ package org.adam.mq.mqserver.core;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.adam.mq.common.Consumer;
+import org.adam.mq.common.ConsumerEnv;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 //MSG => Message Queue
 /*
@@ -22,6 +27,29 @@ public class MSGQueue {
     private boolean autoDelete = false;
     // 用于存储队列的扩展属性，可以包含自定义的键值对
     private Map<String, Object> arguments = new HashMap<>();
+
+    // 当前队列都有哪些消费者订阅
+    private List<ConsumerEnv> consumerEnvList = new ArrayList<>();
+    // 记录当前取到了第几个消费者，方便实现轮询策略
+    private AtomicInteger consumerSeq = new AtomicInteger(0);
+    // 添加一个新的订阅者
+    public void addConsumerEnv(ConsumerEnv consumerEnv) {
+        synchronized (this) {
+            this.consumerEnvList.add(consumerEnv);
+        }
+    }
+    // 订阅者的删除暂时先不考虑
+    // 挑选一个订阅者，用来处理当前的消息(简单的轮询方式)
+    public ConsumerEnv pickConsumerEnv() {
+        if (consumerEnvList.size() == 0) {
+            // 没有订阅者，直接返回null
+            return null;
+        }
+        // 计算当前要取的元素下标
+        int index = consumerSeq.get() % consumerEnvList.size();
+        consumerSeq.getAndIncrement();
+        return consumerEnvList.get(index);
+    }
 
     public String getName() {
         return name;

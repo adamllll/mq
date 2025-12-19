@@ -1,5 +1,6 @@
 package org.adam.mq.mqserver;
 
+import org.adam.mq.common.Consumer;
 import org.adam.mq.common.MqException;
 import org.adam.mq.mqserver.core.*;
 import org.adam.mq.mqserver.datacenter.DiskDataCenter;
@@ -303,7 +304,6 @@ public class VirtualHost {
                     // 如果是fanout交换机，所有绑定的队列都需要转发
                     // 如果是topic交换机，需要判定 routingkey 和 bindingkey 是否匹配
                     if (!router.route(exchange.getType(), binding, message)) {
-                        //
                         continue;
                     }
                     // 5.4 真正转发消息给队列
@@ -330,5 +330,14 @@ public class VirtualHost {
         memoryDataCenter.sendMessage(queue, message);
         System.out.println("[VirtualHost] 消息发送成功，消息ID=" + message.getMessageId() + "，目标队列=" + queue.getName());
         // TODO 此处还行需要补充一个逻辑，通知消费者可以消费消息了
+    }
+
+    // 订阅消息
+    // 添加一个队列的订阅者，当队列收到消息之后，通知该订阅者消费消息
+    // 这里的 consumerTag 可以理解为订阅者的标识符
+    // autoAck 消息被消费完毕后，是否自动发送确认回执
+    // consumer 是一个回调函数，此处类型设定成函数式结构，后续调用 basicconsume 的时候传入一个 lambda 表达式即可
+    public boolean basicConsume(String consumerTag, String queueName, boolean autoAck, Consumer consumer) {
+
     }
 }
