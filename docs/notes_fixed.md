@@ -3343,6 +3343,11 @@ queueName=" + queueName);
 ### 6) 实现消费消息
 
 所谓的消费消息, 其实就是调用消息的回调. 并把消息删除掉.
+
+![image-20260102192610860](./notes_fixed.assets/image-20260102192610860.png)
+
+![image-20260102192620018](./notes_fixed.assets/image-20260102192620018.png)
+
 ```java
 private void consumeMessage(MSGQueue msgQueue) throws MqException {
 
@@ -3447,15 +3452,12 @@ parent.getMemoryDataCenter().removeMessage(message.getMessageId());
 
 ### 2) 执行消息回调的时候服务器宕机
 
-内存所有数据都没了, 但是消息在硬盘上仍然存在. 会在服务下次启动的时候, 加载回内存. 重新被消费
-
-到.
-
-消息确认
+内存所有数据都没了, 但是消息在硬盘上仍然存在. 会在服务下次启动的时候, 加载回内存. 重新被消费到.消息确认。
 
 下列方法只是手动应答的时候才会使用.
 
 应答成功, 则把消息删除掉.
+
 ```java
 public boolean basicAck(String queueName, String messageId) {
 
@@ -3555,7 +3557,7 @@ SpringApplication.run(JavaMessageQueueApplication.class);
 }
 ```
 
-编写测试用例
+
 ```java
 @Test
 

@@ -21,6 +21,7 @@ public class VirtualHost {
     private MemoryDataCenter memoryDataCenter = new MemoryDataCenter();
     private DiskDataCenter diskDataCenter = new DiskDataCenter();
     private Router router = new Router();
+    private ConsumerManager consumerManager = new ConsumerManager(this);
 
     // 操作交换机的锁对象
     private final Object exchangeLocker = new Object();
@@ -318,7 +319,7 @@ public class VirtualHost {
         }
     }
 
-    private void sendMessage(MSGQueue queue, Message message) throws IOException, MqException {
+    private void sendMessage(MSGQueue queue, Message message) throws IOException, MqException, InterruptedException {
         // 此处发送消息，就是把消息写入到 硬盘 和 内存 上
         int deliverMode = message.getDeliveryMode();
         // deliverMode 为1不持久化，为2持久化
@@ -329,7 +330,8 @@ public class VirtualHost {
         // 写入内存
         memoryDataCenter.sendMessage(queue, message);
         System.out.println("[VirtualHost] 消息发送成功，消息ID=" + message.getMessageId() + "，目标队列=" + queue.getName());
-        // TODO 此处还行需要补充一个逻辑，通知消费者可以消费消息了
+        // 此处还行需要补充一个逻辑，通知消费者可以消费消息了
+        consumerManager.notifyConsume(queue.getName());
     }
 
     // 订阅消息
@@ -338,6 +340,16 @@ public class VirtualHost {
     // autoAck 消息被消费完毕后，是否自动发送确认回执
     // consumer 是一个回调函数，此处类型设定成函数式结构，后续调用 basicconsume 的时候传入一个 lambda 表达式即可
     public boolean basicConsume(String consumerTag, String queueName, boolean autoAck, Consumer consumer) {
-
+        // 构造一个 ConsumerEnv对象，把这个对于的小烈找到，再把这个Consumer对象添加到队列中
+        queueName = virtualHostName + "-" + queueName;
+        try {
+            consumerManager.addConsumer(consumerTag, queueName, autoAck, consumer);
+            System.out.println("[VirtualHost] 消费者 basicConsumer" + consumerTag + " 订阅队列 " + queueName + " 成功");
+            return true;
+        }catch (Exception e) {
+            System.out.println("[VirtualHost] 消费者 basicConsumer " + consumerTag + " 订阅队列 " + queueName + " 失败，发生异常：" + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
     }
 }

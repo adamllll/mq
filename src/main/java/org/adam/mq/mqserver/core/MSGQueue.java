@@ -34,13 +34,11 @@ public class MSGQueue {
     private AtomicInteger consumerSeq = new AtomicInteger(0);
     // 添加一个新的订阅者
     public void addConsumerEnv(ConsumerEnv consumerEnv) {
-        synchronized (this) {
             this.consumerEnvList.add(consumerEnv);
-        }
     }
     // 订阅者的删除暂时先不考虑
     // 挑选一个订阅者，用来处理当前的消息(简单的轮询方式)
-    public ConsumerEnv pickConsumerEnv() {
+    public ConsumerEnv chooseConsumer() {
         if (consumerEnvList.size() == 0) {
             // 没有订阅者，直接返回null
             return null;
