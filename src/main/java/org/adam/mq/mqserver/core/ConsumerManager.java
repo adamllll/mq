@@ -89,13 +89,27 @@ public class ConsumerManager {
         }
         // 3. 提交一个任务到线程池中去执行回调
         workerPool.submit(() -> {
-            // 调用回调函数
-            luckyDog.getConsumer().handleDelivery(luckyDog.getConsumerTag(), message.getBasicProperties(), message.getBody());
-            System.out.println("[ConsumerManager] 消息 " + message.getMessageId() + " 已经被消费者 " + luckyDog.getConsumerTag() + " 消费。");
-            // 4. 如果是自动确认模式，直接确认
-            if (luckyDog.isAutoAck()) {
-
+            try {
+                // 3.1 把消息带入消费者的回调方法中，这个操作在执行回调之前
+                parent.getMemoryDataCenter().addMessageWaitAck(queue.getName(),message);
+                // 3.2 执行回调操作
+                luckyDog.getConsumer().handleDelivery(luckyDog.getConsumerTag(), message.getBasicProperties(), message.getBody());
+                // 3.4 如果是自动确认模式，直接把消息删除了，如果是手动应答，则先不处理 交给后续消费者调用 basicAck 方法来处理
+                if (luckyDog.isAutoAck()) {
+                    // 1.删除硬盘上的消息
+                    if (message.getDeliveryMode() == 2) {
+                            parent.getDiskDataCenter().deleteMessage(queue, message);
+                    }
+                    // 2.删除上面的待确认集合中的消息
+                    parent.getMemoryDataCenter().removeMessageWaitAck(queue.getName(), message.getMessageId());
+                    // 3. 删除内存中消息中心里的消息
+                    parent.getMemoryDataCenter().deleteMessage(message.getMessageId());
+                    System.out.println("[ConsumerManager] 消息 " + message.getMessageId() + " 已经被消费者 " + luckyDog.getConsumerTag() + " 消费。");
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
+
         });
     }
 }

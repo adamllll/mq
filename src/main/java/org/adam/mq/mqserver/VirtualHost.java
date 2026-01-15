@@ -72,7 +72,7 @@ public class VirtualHost {
                 }
                 // 2. 交换机不存在，创建新的交换机对象
                 Exchange exchange = new Exchange();
-                exchange.setName("exchangeName");
+                exchange.setName(exchangeName);
                 exchange.setType(exchangeType);
                 exchange.setDurable(durable);
                 exchange.setAutoDelete(autoDelete);
@@ -351,5 +351,35 @@ public class VirtualHost {
             e.printStackTrace();
             return false;
         }
+    }
+
+    public boolean basicAck(String queueName, String messageId) {
+        queueName = virtualHostName + "-" + queueName;
+        try {
+            // 1. 获取消息和队列
+            Message message = memoryDataCenter.getMessage(messageId);
+            MSGQueue queue = memoryDataCenter.getQueue(queueName);
+            if (message == null) {
+                throw new MqException("[VirtualHost] 要确认的消息 " + messageId + " 不存在，无法确认");
+            }
+            if (queue == null) {
+                throw new MqException("[VirtualHost] 要确认的队列 " + queueName + " 不存在，无法确认");
+            }
+            // 2. 删除硬盘中的数据
+            if (message.getDeliveryMode() == 2 && queue.isDurable()) {
+                diskDataCenter.deleteMessage(queue, message);
+            }
+            // 3. 删除消息中心(内存)中的待确认消息
+            memoryDataCenter.removeMessageWaitAck(queueName, messageId);
+            // 4. 删除内存中的消息
+            memoryDataCenter.deleteMessage(messageId);
+            System.out.println("[VirtualHost] 消息 " + messageId + " 确认成功！"+ "queueName=" + queueName);
+
+        } catch (Exception e) {
+            System.out.println("[VirtualHost] 消息 " + messageId + "queueName=" + queueName + " 确认失败，发生异常：" + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+        return true;
     }
 }
