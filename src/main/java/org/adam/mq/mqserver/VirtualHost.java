@@ -238,7 +238,7 @@ public class VirtualHost {
             synchronized (exchangeLocker) {
                 synchronized (queueLocker) {
                     // 1. 先找到对应的绑定,获取binding是否已经存在
-                    Binding toDelete = memoryDataCenter.getBinding(queueName, exchangeName);
+                    Binding toDelete = memoryDataCenter.getBinding(exchangeName, queueName);
                     if (toDelete == null) {
                         throw new MqException("[VirtualHost] binding 不存在，无法删除！ queueName=" + queueName + ", exchangeName=" + exchangeName);
                     }
@@ -274,18 +274,29 @@ public class VirtualHost {
             // 4. 判定交换机的类型，并进行相应的路由转发
             if (exchange.getType() == ExchangeType.DIRECT) {
                 // 按照直接交换机的方式来转发消息
-                // 以 routingkey 作为队列的名字，直接把消息写入指定的队列中,可以无视绑定关系
-                String queueName = virtualHostName + "-" + routingKey;
-                // 4.1. 构造消息对象
-                Message message = Message.createMessageWithId(routingKey, basicProperties, body);
-                // 4.2. 查找该队列名对应的对象
-                MSGQueue queue = memoryDataCenter.getQueue(queueName);
-                if (queue == null) {
-                    throw new MqException("[VirtualHost] 目标队列 " + queueName + " 不存在，无法发送消息");
+                // DIRECT 模式下，routingKey 和 bindingKey 完全匹配才能转发
+                ConcurrentHashMap<String, Binding> bindingsMap = memoryDataCenter.getBindings(exchangeName);
+                if (bindingsMap == null || bindingsMap.isEmpty()) {
+                    throw new MqException("[VirtualHost] 交换机 " + exchangeName + " 没有任何绑定，无法发送消息");
                 }
-                // 4.3 队列存在，直接给队列中写入消息
-                sendMessage(queue, message);
-            }else {
+                // 遍历所有绑定，找到 bindingKey 与 routingKey 完全匹配的队列
+                for (Map.Entry<String, Binding> entry : bindingsMap.entrySet()) {
+                    Binding binding = entry.getValue();
+                    // DIRECT 模式要求 routingKey 与 bindingKey 完全匹配
+                    if (!routingKey.equals(binding.getBindingKey())) {
+                        continue;
+                    }
+                    // 找到匹配的队列
+                    MSGQueue queue = memoryDataCenter.getQueue(binding.getQueueName());
+                    if (queue == null) {
+                        System.out.println("[VirtualHost] 发送消息目标队列 " + binding.getQueueName() + " 不存在，跳过");
+                        continue;
+                    }
+                    // 构造消息对象并发送
+                    Message message = Message.createMessageWithId(routingKey, basicProperties, body);
+                    sendMessage(queue, message);
+                }
+            } else {
                 // 按照 fanout 和 topic 交换机的方式来转发消息
                 // 5.  找到该交换机关联的所有绑定，并遍历这些绑定对象
                 ConcurrentHashMap<String, Binding> bindingsMap = memoryDataCenter.getBindings(exchangeName);
