@@ -111,7 +111,7 @@ public class MessageFileManagerTest {
         Assertions.assertEquals(message.getDeliveryMode(), curMessage.getDeliveryMode());
         // 比较两个字节数组的内容是否一致，不能直接使用assertEquals方法
         Assertions.assertArrayEquals(message.getBody(), curMessage.getBody());
-        System.out.println("message:" + curMessage);
+        System.out.println("[MessageFileManagerTest] 消息: " + curMessage);
     }
 
     @Test
@@ -131,7 +131,7 @@ public class MessageFileManagerTest {
         for (int i = 0; i < expectedMessages.size(); i++) {
             Message expectedMessage = expectedMessages.get(i);
             Message actualMessage = actualmessage.get(i);
-            System.out.println("[" + i + "] " + "actualMessage =" + actualMessage);
+            System.out.println("[" + i + "] " + "实际消息=" + actualMessage);
 
             Assertions.assertEquals(expectedMessage.getMessageId(), actualMessage.getMessageId());
             Assertions.assertEquals(expectedMessage.getRoutingKey(), actualMessage.getRoutingKey());
@@ -163,7 +163,7 @@ public class MessageFileManagerTest {
         for (int i = 0; i < actualMessages.size(); i++) {
             Message expectedMessage = expectedMessages.get(i);
             Message actualMessage = actualMessages.get(i);
-            System.out.println("[" + i + "] " + "actualMessage =" + actualMessage);
+            System.out.println("[" + i + "] " + "实际消息=" + actualMessage);
 
             Assertions.assertEquals(expectedMessage.getMessageId(), actualMessage.getMessageId());
             Assertions.assertEquals(expectedMessage.getRoutingKey(), actualMessage.getRoutingKey());
@@ -214,8 +214,8 @@ public class MessageFileManagerTest {
         // 获取gc后文件大小
         File afterGCFile = new File("./data/" + QUEUE_NAME_1 + "/queue_data.txt");
         long afterGCLength = afterGCFile.length();
-        System.out.println("beforeGCLength=" + beforeGCLength);
-        System.out.println("afterGCLength=" + afterGCLength);
+        System.out.println("[MessageFileManagerTest] GC前文件大小=" + beforeGCLength);
+        System.out.println("[MessageFileManagerTest] GC后文件大小=" + afterGCLength);
         Assertions.assertTrue(afterGCLength < beforeGCLength);
     }
 }

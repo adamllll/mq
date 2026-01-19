@@ -31,9 +31,9 @@ public class DataBaseManager {
             createTable();
             // 插入默认数据
             insertDefaultData();
-            System.out.println("[DBManager] Database and tables created, default data inserted.");
+            System.out.println("[DBManager] 数据库和表创建完成，默认数据已插入。");
         }else {
-            System.out.println("[DBManager] Database and tables already exists.");
+            System.out.println("[DBManager] 数据库和表已存在。");
         }
     }
 
@@ -41,16 +41,16 @@ public class DataBaseManager {
         File file = new File("./data/meta.db");
         if (file.exists()) {
             file.delete();
-            System.out.println("[DBManager] Database file deleted successfully.");
+            System.out.println("[DBManager] 数据库文件删除成功。");
         } else {
-            System.out.println("[DBManager] Database file does not exist.");
+            System.out.println("[DBManager] 数据库文件不存在。");
         }
         File dataDir = new File("./data");
         if (dataDir.exists()) {
             dataDir.delete(); // delete() 只能删除空目录
-            System.out.println("[DBManager] Data directory deleted successfully.");
+            System.out.println("[DBManager] 数据目录删除成功。");
         }else  {
-            System.out.println("[DBManager] Data directory does not exist.");
+            System.out.println("[DBManager] 数据目录不存在。");
         }
     }
 
@@ -67,7 +67,7 @@ public class DataBaseManager {
         metaMapper.createExchangeTable();
         metaMapper.createQueueTable();
         metaMapper.createBindingTable();
-        System.out.println("[DBManager] Tables created successfully.");
+        System.out.println("[DBManager] 数据库表创建成功。");
     }
 
     // 插入默认数据
@@ -81,7 +81,7 @@ public class DataBaseManager {
         exchange.setDurable(true);
         exchange.setAutoDelete(false);
         metaMapper.insertExchange(exchange);
-        System.out.println("[DBManager] Default exchange inserted successfully.");
+        System.out.println("[DBManager] 默认交换机插入成功。");
     }
 
     // 把其他的数据库操作，比如增删改查的方法，也放到这个类中来进行统一管理

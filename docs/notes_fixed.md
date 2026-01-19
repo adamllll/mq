@@ -3997,9 +3997,7 @@ properties.getMessageId()));
 ![image_81_8.png](assets/image_81_8.png)
 生产者和消费者都是客户端, 都需要通过网络和 Broker Server 进行通信.
 
-此处我们使用 TCP 协议, 来作为通信的底层协议. 同时在这个基础上自定义应用层协议, 完成客户端对服
-
-务器这边功能的远程调用.
+此处我们使用 TCP 协议, 来作为通信的底层协议. 同时在这个基础上**自定义应用层协议**, 完成客户端对服务器这边功能的远程调用.
 
 要调用的功能有:
 
@@ -4045,6 +4043,12 @@ properties.getMessageId()));
 
 - 0x2  关闭 channel
 
+  > TCP的连接->Connection
+  >
+  > Channel是Connection的内部“逻辑上”的连接
+  >
+  > 一个Connection中可以有多个Channel，Channel的意义是为了让TCP连接得到复用(创建/断开TCP连接 三次握手的成本比较高~)
+
 - 0x3  创建 exchange
 
 - 0x4  销毁 exchange
@@ -4067,9 +4071,9 @@ properties.getMessageId()));
 
 其中 payload 部分, 会根据不同的 type, 存在不同的格式.
 
-对于请求来说, payload 表示这次方法调用的各种参数信息.
+**对于请求来说, payload 表示这次方法调用的各种参数信息.**
 
-对于响应来说, payload 表示这次方法调用的返回值.
+**对于响应来说, payload 表示这次方法调用的返回值.**
 
 定义 Request / Response
 

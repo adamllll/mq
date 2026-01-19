@@ -116,11 +116,11 @@ public class MemoryDataCenterTests {
         // 1. 构造一个消息，并插入
         Message expectedMessage = createTestMessage("Hello, World!");
         memoryDataCenter.addMessage(expectedMessage);
-        System.out.println("Inserted Message ID: " + expectedMessage.getMessageId());
+        System.out.println("[MemoryDataCenterTests] 插入消息ID: " + expectedMessage.getMessageId());
         // 2. 查询出这个消息，比较结果是否一致
         Message actualMessage = memoryDataCenter.getMessage(expectedMessage.getMessageId());
         Assertions.assertEquals(expectedMessage, actualMessage);
-        System.out.println("Retrieved Message ID: " + actualMessage.getMessageId());
+        System.out.println("[MemoryDataCenterTests] 获取消息ID: " + actualMessage.getMessageId());
         // 3. 删除这个消息
         memoryDataCenter.deleteMessage(expectedMessage.getMessageId());
         // 4. 再次查询，验证删除成功
