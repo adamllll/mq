@@ -11,20 +11,120 @@
 - **持久化**: MyBatis + SQLite
 - **构建工具**: Maven
 
+## 架构概览
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      客户端 SDK                              │
+│              (Connection / Channel)                          │
+└─────────────────────┬───────────────────────────────────────┘
+                      │ TCP (二进制协议)
+┌─────────────────────▼───────────────────────────────────────┐
+│                    BrokerServer                              │
+│            (请求解析 / 会话管理)                              │
+└─────────────────────┬───────────────────────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────────────────────┐
+│                    VirtualHost                               │
+│                 (核心业务逻辑)                                │
+├──────────────┬──────────────┬───────────────────────────────┤
+│    Router    │ ConsumerMgr  │        存储引擎               │
+│  (消息路由)   │  (消息推送)   │  ┌─────────┬─────────────┐  │
+│              │              │  │  内存层  │   硬盘层     │  │
+│              │              │  │  (RAM)   │(SQLite+文件) │  │
+└──────────────┴──────────────┴──┴─────────┴─────────────┴───┘
+```
+
 ## 项目结构
 
 ```
 mq/
-├── src/                  # 源代码
-├── docs/                 # 文档
-│   ├── course.pdf       # 课程资料
-│   ├── notes.md         # 学习笔记
-│   ├── assets/          # PDF 提取的图片
-│   ├── markdown-images/ # Markdown 嵌入的图片
-│   └── 板书/            # 课程板书笔记
-├── pom.xml              # Maven 配置
-└── README.md            # 本文件
+├── src/main/java/org/adam/mq/
+│   ├── common/                    # 通用工具
+│   │   ├── Request.java          # 网络请求对象
+│   │   ├── Response.java         # 网络响应对象
+│   │   ├── Consumer.java         # 消费者回调接口
+│   │   ├── BinaryTool.java       # 序列化工具
+│   │   └── *Arguments.java       # API 参数类
+│   │
+│   ├── mqserver/                  # MQ 服务端核心
+│   │   ├── BrokerServer.java     # TCP 服务器，协议解析
+│   │   ├── VirtualHost.java      # 虚拟主机，核心 API
+│   │   │
+│   │   ├── core/                 # 领域模型
+│   │   │   ├── Exchange.java     # 交换机实体
+│   │   │   ├── MSGQueue.java     # 队列实体
+│   │   │   ├── Binding.java      # 绑定关系
+│   │   │   ├── Message.java      # 消息实体
+│   │   │   ├── Router.java       # 路由引擎
+│   │   │   └── ConsumerManager.java  # 消费者管理
+│   │   │
+│   │   ├── datacenter/           # 存储层
+│   │   │   ├── MemoryDataCenter.java   # 内存存储
+│   │   │   ├── DiskDataCenter.java     # 硬盘持久化
+│   │   │   ├── DataBaseManager.java    # SQLite 管理
+│   │   │   └── MessageFileManager.java # 消息文件存储
+│   │   │
+│   │   └── mapper/               # MyBatis 映射
+│   │       └── MetaMapper.java   # 元数据持久化
+│   │
+│   └── mqclient/                  # 客户端 SDK
+│       ├── Connection.java       # 连接管理
+│       └── Channel.java          # 通道操作
+│
+├── docs/                          # 文档
+│   ├── RESTART_GUIDE.md          # 学习指南
+│   ├── notes_fixed.md            # 学习笔记
+│   └── 板书/                      # 课程图解
+│
+└── pom.xml                        # Maven 配置
 ```
+
+## 已实现功能
+
+### 核心功能
+
+| 功能 | 状态 | 描述 |
+|------|------|------|
+| 交换机管理 | ✅ | 创建/删除交换机（Direct, Fanout, Topic） |
+| 队列管理 | ✅ | 创建/删除队列，支持持久化选项 |
+| 绑定管理 | ✅ | 绑定/解绑队列到交换机 |
+| 消息发布 | ✅ | 发布消息，支持路由键 |
+| 消息订阅 | ✅ | 订阅队列，推送模式 |
+| 消息确认 | ✅ | 手动/自动 ACK 确认机制 |
+
+### 交换机类型
+
+| 类型 | 路由规则 | 使用场景 |
+|------|----------|----------|
+| **Direct** | 精确匹配 RoutingKey == BindingKey | 点对点通信 |
+| **Fanout** | 广播到所有绑定的队列 | 系统通知 |
+| **Topic** | 支持 `*` 和 `#` 通配符的模式匹配 | 灵活订阅 |
+
+### 网络协议
+
+服务端实现了包含 12 种操作类型的二进制协议：
+
+| 编码 | 操作 | 描述 |
+|------|------|------|
+| 0x1 | createChannel | 创建通道 |
+| 0x2 | closeChannel | 关闭通道 |
+| 0x3 | exchangeDeclare | 声明交换机 |
+| 0x4 | exchangeDelete | 删除交换机 |
+| 0x5 | queueDeclare | 声明队列 |
+| 0x6 | queueDelete | 删除队列 |
+| 0x7 | queueBind | 绑定队列到交换机 |
+| 0x8 | queueUnbind | 解除队列绑定 |
+| 0x9 | basicPublish | 发布消息 |
+| 0xa | basicConsume | 订阅队列 |
+| 0xb | basicAck | 确认消息 |
+| 0xc | (响应) | 服务器推送给消费者 |
+
+### 存储架构
+
+- **内存层**: 使用 ConcurrentHashMap 实现高性能读写
+- **硬盘层**: SQLite 存储元数据 + 二进制文件存储消息体
+- **GC 机制**: 基于复制算法的消息文件垃圾回收
 
 ## 快速开始
 
@@ -52,17 +152,9 @@ mq/
 
 ## 文档
 
-查看详细的学习笔记和实现细节：
-- [学习笔记](docs/notes.md) - 全面的学习笔记
+- [学习指南](docs/RESTART_GUIDE.md) - 包含架构图的完整学习指南
+- [学习笔记](docs/notes_fixed.md) - 详细的实现笔记
 - [课程资料](docs/course.pdf) - 原始课程 PDF
-
-## 开发
-
-这是一个学习项目，实现了核心的消息队列概念，包括：
-- 消息持久化
-- 队列管理
-- 发布者/消费者模式
-- 消息路由
 
 ## 许可证
 
@@ -70,4 +162,4 @@ mq/
 
 ---
 
-**注意**：这是一个为教育目的创建的学习项目。
+**注意**：这是一个为教育目的创建的学习项目，实现了受 RabbitMQ 启发的核心消息队列概念。

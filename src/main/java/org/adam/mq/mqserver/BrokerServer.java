@@ -7,6 +7,9 @@ import java.io.*;
 import java.io.EOFException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -79,7 +82,7 @@ public class BrokerServer {
             // 客户端正常关闭连接（DataInputStream读到EOF就抛出异常借助这个异常来结束循环）
             System.out.println("[BrokerServer] connection关闭，客户端:"+ clientSocket.getInetAddress().toString() +
                     ",端口号:"+ clientSocket.getPort() +"已断开连接。");
-        } catch (IOException e) {
+        } catch (IOException | MqException e) {
             System.out.println("[BrokerServer] 处理连接时发生错误: " + e.getMessage());
             e.printStackTrace();
         } finally {
@@ -114,7 +117,7 @@ public class BrokerServer {
         dataOutputStream.write(response.getPayload()); // 写入响应数据内容
         dataOutputStream.flush(); // 刷新输出流，确保数据发送
     }
-    private Response process(Request request, Socket clientSocket) throws IOException, ClassNotFoundException {
+    private Response process(Request request, Socket clientSocket) throws IOException, ClassNotFoundException, MqException {
         // 1. 把 request 中的payload 做一个反序列化的解析
         BasicArguments basicArguments = (BasicArguments) BinaryTool.fromBytes(request.getPayload());
         System.out.println("[BrokerServer] 收到请求，" +
@@ -176,7 +179,7 @@ public class BrokerServer {
                     arguments.getRoutingKey(),
                     arguments.getBasicProperties(),
                     arguments.getBody());
-        } else if (request.getType() == 0xA) {
+        } else if (request.getType() == 0xa) {
             // 订阅消息
             BasicConsumeArguments arguments = (BasicConsumeArguments) basicArguments;
             sucess = virtualHost.basicConsume(
@@ -186,17 +189,72 @@ public class BrokerServer {
                     new Consumer() {
                         // 此处的回调函数把服务器收到的消息直接推送给对应的消费者客户端
                         @Override
-                        public void handleDelivery(String consumerTag, BasicProperties properties, byte[] body) {
+                        public void handleDelivery(String consumerTag, BasicProperties properties, byte[] body) throws MqException, IOException {
                             // 先知道当前这个收到的消息需要发给哪个客户端
                             // 此处的 consumerTag 就是 channelId,根据 channelId去 session中查询对应的 Socket对象
-                            //TODO
+                            // 1. 根据 channelId找到 socket 对象
+                            Socket clinetSocket = sessions.get(consumerTag);
+                            if (clinetSocket == null || clinetSocket.isClosed()) {
+                                throw new MqException("[BrokerServer] 发送消息失败，未找到对应的客户端连接，consumerTag: " + consumerTag);
+                            }
+                            // 2. 构造响应数据
+                            SubscribeReturns subscribeReturns = new SubscribeReturns();
+                            subscribeReturns.setChannelId(consumerTag);
+                            subscribeReturns.setRid(""); // 此处不需要 rid，可以设置为空字符串(只有响应没有请求)
+                            subscribeReturns.setSuccess(true);
+                            subscribeReturns.setConsumerTag(consumerTag);
+                            subscribeReturns.setBasicProperties(properties);
+                            subscribeReturns.setBody(body);
+                            Response response = new Response();
+                            byte[] payload = BinaryTool.toBytes(subscribeReturns);
+                            response.setType(0xc); // 消息推送的响应类型 0xc表示消费者给客户端推送的消息
+                            // response的 payload 是 SubscribeReturns 对象
+                            response.setLength(payload.length);
+                            request.setPayload(payload);
+                            // 3. 把响应写回到客户端 注意此处的DataOutputStream 不能关闭，否则会关闭 socket 连接
+                            DataOutputStream dataOutputStream = new DataOutputStream(clinetSocket.getOutputStream());
+                            writeResponse(dataOutputStream, response);
                         }
                     });
+
+        } else if (request.getType() == 0xb) {
+            // 调用 basicAck 确认消息
+            BasicAckArguments arguments = (BasicAckArguments) basicArguments;
+            sucess = virtualHost.basicAck(arguments.getQueueName(), arguments.getMessageId());
+        } else {
+            // 当前的 type 是非法的
+            throw new MqException("[BrokerServer] 收到非法的请求类型: " + request.getType());
         }
-        return null;
+        // 3. 构造响应对象并返回
+        BasicReturns basicReturns = new BasicReturns();
+        basicReturns.setChannelId(basicArguments.getChannelId());
+        basicReturns.setRid(basicArguments.getRid());
+        basicReturns.setSuccess(sucess);
+        // 构造响应对象
+        Response response = new Response();
+        byte[] payload = BinaryTool.toBytes(basicReturns);
+        response.setType(request.getType()); // 响应类型和请求类型相同
+        response.setLength(payload.length);
+        response.setPayload(payload);
+        System.out.println("[BrokerServer] 处理请求完成，rid: " + basicArguments.getRid() +
+                ", channelId: " + basicArguments.getChannelId() +
+                ", 类型: " + request.getType() +
+                ", 成功: " + sucess);
+        return response;
     }
     
     private void clearClosedSession(Socket clientSocket) {
-        //TODO
+        List<String> toDeletechannelId = new ArrayList<>();
+        for (Map.Entry<String, Socket> entry : sessions.entrySet()) {
+            if (entry.getValue().equals(clientSocket)) {
+                // 不能直接删除，否则会引发 ConcurrentModificationException（一边遍历一边删除）
+                //sessions.remove(entry.getKey());
+                toDeletechannelId.add(entry.getKey());
+            }
+        }
+        for (String channelId : toDeletechannelId) {
+            sessions.remove(channelId);
+            System.out.println("[BrokerServer] 会话关闭，移除 channelId: " + toDeletechannelId);
+        }
     }
 }

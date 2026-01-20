@@ -1,6 +1,6 @@
 # 消息队列 (MQ) 学习手册
 
-> **创建日期**: 2026-01-15
+> **最后更新**: 2026-01-20
 > **目标**: 从零开始理解消息队列核心原理，并掌握本项目的实现细节。
 
 ---
@@ -9,13 +9,12 @@
 
 1. [消息队列基础理论](#1-消息队列基础理论)
 2. [项目概览](#2-项目概览)
-3. [当前进度盘点](#3-当前进度盘点)
+3. [当前开发进度](#3-当前开发进度)
 4. [核心架构图](#4-核心架构图)
 5. [深度技术解析](#5-深度技术解析)
 6. [关键代码路径导航](#6-关键代码路径导航)
-7. [后续开发计划](#7-后续开发计划)
-8. [学习检验与思考题](#8-学习检验与思考题)
-9. [延伸阅读与参考资料](#9-延伸阅读与参考资料)
+7. [学习检验与思考题](#7-学习检验与思考题)
+8. [延伸阅读与参考资料](#8-延伸阅读与参考资料)
 
 ---
 
@@ -97,14 +96,16 @@ Producer → Exchange → Binding → Queue → Consumer
 - ✅ 支持 **持久化** (SQLite + 磁盘文件) 与 **内存** 双层存储
 - ✅ 支持 **消息确认机制 (ACK)**
 - ✅ 支持消息文件的 **GC 垃圾回收**
+- ✅ 完整的 **TCP 网络通信层**（二进制协议）
+- ✅ **消费者管理器**（轮询推送机制）
 
 ---
 
-## 3. 当前进度盘点
+## 3. 当前开发进度
 
-截止目前，**核心业务逻辑层 (Core Domain)** 已基本完成，**网络通信层**尚未开始。
+项目已完成**全部核心功能**的开发，包括服务端核心、网络通信层和客户端 SDK。
 
-### ✅ 已完成模块 (Server Core)
+### ✅ 已完成模块
 
 | 模块 | 核心类 | 功能描述 |
 | :--- | :--- | :--- |
@@ -114,14 +115,28 @@ Producer → Exchange → Binding → Queue → Consumer
 | **内存层** | `MemoryDataCenter` | 维护内存中的状态 (ConcurrentHashMap)，提供高性能读写 |
 | **控制中心** | `VirtualHost` | 整合内存与硬盘管理，对外提供核心 API |
 | **消费管理** | `ConsumerManager` | 维护消费者订阅关系，实现消息的轮询推送 |
-
-### 🚧 待开发模块 (Network & Client)
-
-| 模块 | 缺失内容 | 计划 |
-| :--- | :--- | :--- |
-| **通信协议** | `Request`, `Response` 对象 | 定义客户端与服务端交互的二进制协议格式 |
-| **服务端网络** | `BrokerServer` | 基于 Socket/Netty 实现 TCP 监听，解析协议并调用 VirtualHost |
+| **网络通信** | `BrokerServer` | TCP 服务器，实现二进制协议解析和会话管理 |
+| **通信协议** | `Request`, `Response`, `*Arguments` | 客户端与服务端交互的二进制协议格式 |
 | **客户端 SDK** | `Connection`, `Channel` | 封装网络通信，给用户提供易用的发送/订阅接口 |
+
+### 🔧 协议操作类型一览
+
+`BrokerServer` 实现了完整的 12 种操作类型：
+
+| 编码 | 操作 | 对应方法 | 描述 |
+| :--- | :--- | :--- | :--- |
+| `0x1` | createChannel | - | 创建通道，建立 channelId 与 Socket 的映射 |
+| `0x2` | closeChannel | - | 销毁通道，从 sessions 中移除 |
+| `0x3` | exchangeDeclare | `virtualHost.exchangeDeclare()` | 声明交换机 |
+| `0x4` | exchangeDelete | `virtualHost.exchangeDelete()` | 删除交换机 |
+| `0x5` | queueDeclare | `virtualHost.queueDeclare()` | 声明队列 |
+| `0x6` | queueDelete | `virtualHost.queueDelete()` | 删除队列 |
+| `0x7` | queueBind | `virtualHost.queueBind()` | 绑定队列到交换机 |
+| `0x8` | queueUnbind | `virtualHost.queueUnbind()` | 解除队列绑定 |
+| `0x9` | basicPublish | `virtualHost.basicPublish()` | 发布消息 |
+| `0xa` | basicConsume | `virtualHost.basicConsume()` | 订阅队列 |
+| `0xb` | basicAck | `virtualHost.basicAck()` | 确认消息 |
+| `0xc` | (响应) | - | 服务器向消费者推送消息 |
 
 ---
 
@@ -131,10 +146,10 @@ Producer → Exchange → Binding → Queue → Consumer
 
 ```mermaid
 graph TD
-    User[用户/开发者] --> ClientSDK[客户端 SDK - 待开发]
+    User[用户/开发者] --> ClientSDK[客户端 SDK]
 
     subgraph "MQ Server (服务端)"
-        BrokerServer[BrokerServer - 待开发]
+        BrokerServer[BrokerServer - TCP 服务器]
 
         subgraph "VirtualHost (虚拟主机)"
             Router[Router 路由匹配]
@@ -147,7 +162,7 @@ graph TD
         end
     end
 
-    ClientSDK <-->|TCP / 自定义协议| BrokerServer
+    ClientSDK <-->|TCP / 二进制协议| BrokerServer
     BrokerServer -->|调用 API| VirtualHost
 
     VirtualHost --> Router
@@ -165,6 +180,7 @@ graph TD
 ```mermaid
 sequenceDiagram
     participant P as Producer
+    participant BS as BrokerServer
     participant VH as VirtualHost
     participant R as Router
     participant DDC as DiskDataCenter
@@ -172,7 +188,9 @@ sequenceDiagram
     participant CM as ConsumerManager
     participant C as Consumer
 
-    P->>VH: basicPublish(exchange, routingKey, message)
+    P->>BS: TCP 请求 (type=0x9, basicPublish)
+    BS->>BS: 解析二进制协议
+    BS->>VH: basicPublish(exchange, routingKey, message)
     VH->>R: route(exchangeType, binding, message)
     R-->>VH: 返回目标队列列表
 
@@ -184,17 +202,98 @@ sequenceDiagram
 
     CM->>MDC: pollMessage(queueName)
     MDC-->>CM: message
-    CM->>C: callback.handleDelivery(message)
-    C-->>CM: ACK
-    CM->>DDC: deleteMessage() [逻辑删除]
-    CM->>MDC: removeMessage()
+    CM->>BS: 通过 sessions 查找消费者 Socket
+    BS->>C: TCP 响应 (type=0xc, 推送消息)
+    C-->>BS: TCP 请求 (type=0xb, ACK)
+    BS->>VH: basicAck(queueName, messageId)
+    VH->>DDC: deleteMessage() [逻辑删除]
+    VH->>MDC: removeMessage()
+```
+
+### 4.3 BrokerServer 会话管理
+
+```mermaid
+graph LR
+    subgraph "客户端连接"
+        C1[Client 1] -->|Socket 1| BS[BrokerServer]
+        C2[Client 2] -->|Socket 2| BS
+    end
+
+    subgraph "会话映射 (ConcurrentHashMap)"
+        BS --> S1["channelId-1 → Socket 1"]
+        BS --> S2["channelId-2 → Socket 1"]
+        BS --> S3["channelId-3 → Socket 2"]
+    end
+
+    subgraph "说明"
+        Note["一个 TCP 连接可包含多个 Channel<br/>通过 channelId 区分不同逻辑通道"]
+    end
 ```
 
 ---
 
 ## 5. 深度技术解析
 
-### 5.1 Exchange 路由机制
+### 5.1 BrokerServer 网络通信层 ⭐
+
+`BrokerServer` 是 MQ 的网络入口，基于 TCP 实现多线程请求处理。
+
+#### 核心设计要点
+
+```java
+// 文件位置: src/main/java/org/adam/mq/mqserver/BrokerServer.java
+
+public class BrokerServer {
+    private ServerSocket serverSocket;
+    private VirtualHost virtualHost = new VirtualHost("DefaultVHost");
+
+    // 会话管理：channelId -> Socket
+    private ConcurrentHashMap<String, Socket> sessions = new ConcurrentHashMap<>();
+
+    // 线程池处理并发连接
+    private ExecutorService executorService = Executors.newCachedThreadPool();
+}
+```
+
+#### 二进制协议格式
+
+```
+┌──────────────┬──────────────┬────────────────────────────────┐
+│   4 bytes    │   4 bytes    │          N bytes               │
+│    type      │   length     │          payload               │
+│  (操作类型)   │  (数据长度)   │      (序列化后的参数对象)        │
+└──────────────┴──────────────┴────────────────────────────────┘
+```
+
+#### 消息推送机制
+
+当消费者订阅队列时，`BrokerServer` 会注册一个回调函数：
+
+```java
+// 订阅时注册的回调
+virtualHost.basicConsume(consumerTag, queueName, autoAck, new Consumer() {
+    @Override
+    public void handleDelivery(String consumerTag, BasicProperties props, byte[] body) {
+        // 1. 根据 consumerTag (即 channelId) 找到对应的 Socket
+        Socket clientSocket = sessions.get(consumerTag);
+
+        // 2. 构造推送响应 (type = 0xc)
+        SubscribeReturns returns = new SubscribeReturns();
+        returns.setBody(body);
+
+        // 3. 直接写入 Socket 输出流，实现服务端主动推送
+        DataOutputStream dos = new DataOutputStream(clientSocket.getOutputStream());
+        writeResponse(dos, response);
+    }
+});
+```
+
+**关键理解点**：
+- 一个 TCP 连接可以包含多个 Channel（逻辑通道）
+- `sessions` 保存的是 `channelId → Socket` 的映射
+- 消息推送时，通过 `consumerTag`（等于 `channelId`）找到目标 Socket
+
+### 5.2 Exchange 路由机制
 
 ```mermaid
 graph LR
@@ -216,7 +315,7 @@ graph LR
     end
 ```
 
-### 5.2 Topic 通配符匹配算法 ⭐
+### 5.3 Topic 通配符匹配算法 ⭐
 
 这是本项目的核心算法之一，使用**双指针遍历**实现模式匹配。
 
@@ -286,7 +385,7 @@ private boolean routeTopic(Binding binding, Message message) {
 | `aaa.bbb` | `aaa.bbb.ccc` | ❌ false | 长度不匹配 |
 | `*.aaa` | `aaa` | ❌ false | `*` 必须匹配恰好一个词 |
 
-### 5.3 双层存储架构
+### 5.4 双层存储架构
 
 我们采用 **内存 + 硬盘** 的混合存储策略，以平衡性能与数据安全性。
 
@@ -300,7 +399,7 @@ private boolean routeTopic(Binding binding, Message message) {
 
 消息是"流数据"，特点是量大、变长、生命周期短。相比数据库的随机写入，文件系统的**顺序追加写 (Sequential Write)** 效率高出数量级，且更容易做 GC。
 
-### 5.4 消息文件存储格式 ⭐
+### 5.5 消息文件存储格式 ⭐
 
 消息以**变长二进制格式**追加存储在 `queue_data.txt` 文件中：
 
@@ -350,7 +449,7 @@ public void sendMessage(MSGQueue queue, Message message) throws MqException, IOE
 }
 ```
 
-### 5.5 GC 垃圾回收机制 ⭐
+### 5.6 GC 垃圾回收机制 ⭐
 
 消息被消费后采用**逻辑删除**（仅修改 `isValid` 标记），随着时间推移会产生大量"垃圾"。GC 机制负责清理这些无效数据。
 
@@ -392,12 +491,13 @@ graph LR
     end
 ```
 
-### 5.6 线程安全设计
+### 5.7 线程安全设计
 
 本项目在多个层面保证线程安全：
 
 | 层级 | 保护对象 | 机制 |
 | :--- | :--- | :--- |
+| BrokerServer | sessions 会话映射 | `ConcurrentHashMap` |
 | VirtualHost | Exchange 操作 | `synchronized (exchangeLocker)` |
 | VirtualHost | Queue 操作 | `synchronized (queueLocker)` |
 | MessageFileManager | 单个队列的文件读写 | `synchronized (queue)` |
@@ -409,71 +509,53 @@ graph LR
 
 ## 6. 关键代码路径导航
 
-建议按以下顺序阅读代码，从上层到底层：
+建议按以下顺序阅读代码，从网络层到核心层再到存储层：
 
-### 第一阶段：理解核心 API
+### 第一阶段：理解网络通信层
 
-1. **VirtualHost.java** - 业务逻辑入口
+1. **BrokerServer.java** - 网络入口
+   - 路径: `src/main/java/org/adam/mq/mqserver/BrokerServer.java`
+   - 重点方法: `start()`, `processConnection()`, `process()`
+   - 理解: TCP 服务器如何接收请求、解析协议、分发到 VirtualHost
+
+2. **Request.java / Response.java** - 协议对象
+   - 路径: `src/main/java/org/adam/mq/common/`
+   - 重点: 二进制协议的 type + length + payload 结构
+
+### 第二阶段：理解核心 API
+
+3. **VirtualHost.java** - 业务逻辑入口
    - 路径: `src/main/java/org/adam/mq/mqserver/VirtualHost.java`
    - 重点方法: `exchangeDeclare()`, `queueDeclare()`, `basicPublish()`, `basicConsume()`
    - 理解: 如何协调内存层和硬盘层
 
-### 第二阶段：理解存储层
-
-2. **MemoryDataCenter.java** - 内存数据管理
-   - 路径: `src/main/java/org/adam/mq/mqserver/datacenter/MemoryDataCenter.java`
-   - 重点: ConcurrentHashMap 的使用，`recovery()` 数据恢复
-
-3. **DiskDataCenter.java** - 硬盘数据管理
-   - 路径: `src/main/java/org/adam/mq/mqserver/datacenter/DiskDataCenter.java`
-   - 重点: `init()` 初始化流程，`sendMessage()` 持久化逻辑
-
-4. **MessageFileManager.java** - 消息文件管理
-   - 路径: `src/main/java/org/adam/mq/mqserver/datacenter/MessageFileManager.java`
-   - 重点: `sendMessage()`, `deleteMessage()`, `gc()`, 文件格式设计
-
-### 第三阶段：理解路由与消费
-
-5. **Router.java** - 路由匹配算法
-   - 路径: `src/main/java/org/adam/mq/mqserver/core/Router.java`
-   - 重点: `routeTopic()` 通配符匹配算法
-
-6. **ConsumerManager.java** - 消费者管理
+4. **ConsumerManager.java** - 消费者管理
    - 路径: `src/main/java/org/adam/mq/mqserver/core/ConsumerManager.java`
    - 重点: 消费者轮询机制，消息推送流程
 
----
+### 第三阶段：理解存储层
 
-## 7. 后续开发计划
+5. **MemoryDataCenter.java** - 内存数据管理
+   - 路径: `src/main/java/org/adam/mq/mqserver/datacenter/MemoryDataCenter.java`
+   - 重点: ConcurrentHashMap 的使用，`recovery()` 数据恢复
 
-按照以下步骤完成剩余开发：
+6. **DiskDataCenter.java** - 硬盘数据管理
+   - 路径: `src/main/java/org/adam/mq/mqserver/datacenter/DiskDataCenter.java`
+   - 重点: `init()` 初始化流程，`sendMessage()` 持久化逻辑
 
-```mermaid
-graph LR
-    A[阶段一: 协议定义] --> B[阶段二: 服务端网络]
-    B --> C[阶段三: 客户端 SDK]
-    C --> D[阶段四: 联调演示]
-```
+7. **MessageFileManager.java** - 消息文件管理
+   - 路径: `src/main/java/org/adam/mq/mqserver/datacenter/MessageFileManager.java`
+   - 重点: `sendMessage()`, `deleteMessage()`, `gc()`, 文件格式设计
 
-### 阶段一：协议定义
-- 在 `common` 包下定义 `Request` 和 `Response`
-- 设计二进制协议格式，统一前后端"语言"
+### 第四阶段：理解路由
 
-### 阶段二：服务端网络接入
-- 实现 `BrokerServer`，基于 Socket 或 Netty
-- 解析请求协议，调用 VirtualHost API
-
-### 阶段三：客户端 SDK
-- 编写 `Connection` 和 `Channel`
-- 封装网络通信，提供易用的发送/订阅接口
-
-### 阶段四：联调与演示
-- 编写 Demo 程序
-- 跑通"生产 → 存储 → 消费"全流程
+8. **Router.java** - 路由匹配算法
+   - 路径: `src/main/java/org/adam/mq/mqserver/core/Router.java`
+   - 重点: `routeTopic()` 通配符匹配算法
 
 ---
 
-## 8. 学习检验与思考题
+## 7. 学习检验与思考题
 
 完成以下问题，检验你对项目的理解程度。
 
@@ -485,25 +567,31 @@ graph LR
 
 3. **存储设计**：为什么元数据存 SQLite，而消息体存文件？如果反过来会有什么问题？
 
+4. **网络通信**：为什么 BrokerServer 使用 `ConcurrentHashMap` 来存储 sessions？
+
 ### 🟡 进阶题
 
-4. **算法分析**：`routeTopic()` 方法的时间复杂度是多少？能否优化？
+5. **算法分析**：`routeTopic()` 方法的时间复杂度是多少？能否优化？
 
-5. **GC 策略**：当前的 GC 触发条件是 `totalCount > 2000 && validRate < 0.5`，这个设计有什么优缺点？你会如何改进？
+6. **GC 策略**：当前的 GC 触发条件是 `totalCount > 2000 && validRate < 0.5`，这个设计有什么优缺点？你会如何改进？
 
-6. **线程安全**：为什么 VirtualHost 要使用两把不同的锁（exchangeLocker 和 queueLocker）而不是一把全局锁？
+7. **线程安全**：为什么 VirtualHost 要使用两把不同的锁（exchangeLocker 和 queueLocker）而不是一把全局锁？
+
+8. **协议设计**：为什么 type=0xc 的响应不需要 rid？（提示：看 SubscribeReturns 的构造）
 
 ### 🔴 挑战题
 
-7. **故障恢复**：如果消息写入文件成功，但更新统计文件时服务器崩溃了，会发生什么？如何解决这个问题？
+9. **故障恢复**：如果消息写入文件成功，但更新统计文件时服务器崩溃了，会发生什么？如何解决这个问题？
 
-8. **性能优化**：如果每秒有 10 万条消息写入同一个队列，当前的 `synchronized (queue)` 锁会成为瓶颈吗？你会如何优化？
+10. **性能优化**：如果每秒有 10 万条消息写入同一个队列，当前的 `synchronized (queue)` 锁会成为瓶颈吗？你会如何优化？
 
-9. **功能扩展**：如果要实现"延迟消息"功能（消息在指定时间后才能被消费），你会如何设计？
+11. **功能扩展**：如果要实现"延迟消息"功能（消息在指定时间后才能被消费），你会如何设计？
+
+12. **连接管理**：当客户端断开连接时，`clearClosedSession()` 方法如何清理对应的所有 Channel？这个设计有什么潜在问题？
 
 ---
 
-## 9. 延伸阅读与参考资料
+## 8. 延伸阅读与参考资料
 
 ### 官方文档
 
@@ -529,5 +617,5 @@ graph LR
 
 ---
 
-*文档生成于：2026-01-15*
+*文档更新于：2026-01-20*
 *祝学习愉快！遇到问题先翻代码，代码不会骗你。*
