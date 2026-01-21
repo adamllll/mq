@@ -4791,6 +4791,10 @@ toDeleteChannelId);
 
 用来创建连接的工厂类.
 
+> 这个类持有服务器的地址
+>
+> 主要功能是创建出连接Connection对象
+
 - 当前没有实现用户认证和多虚拟主机, 用户名密码可以暂时先不要.
 ```java
 public class ConnectionFactory {
@@ -4831,6 +4835,13 @@ Connection 和 Channel 的定义
 一个 Connection 可以包含多个 Channel
 
 ### 1) Connection 的定义
+
+> 持有socket对象
+>
+> 写入/读取响应
+>
+> 管理多个Channel对象
+
 ```java
 public class Connection {
 
@@ -4857,15 +4868,24 @@ ConcurrentHashMap<>();
 }
 ```
 
-- Socket 是客户端持有的套接字. InputStream OutputStream DataInputStream
-
-DataOutputStream 均为 socket 通信的接口.
+- Socket 是客户端持有的套接字. InputStream OutputStream DataInputStream DataOutputStream 均为 socket 通信的接口.
 
 - channelMap 用来管理该连接中所有的 Channel.
 
 - callbackPool 是用来在客户端这边执行用户回调的线程池.
 
 ### 2) Channel 的定义
+
+> Channel表示一个逻辑上的连接
+>
+> 还需要提高一系列的“方法”去和服务器提供的核心API对应（客户端提供的这些方法的内部就是发了一个特定的请求）
+>
+> 一个客户端可以有多个模块
+>
+> 每个模块都可以和 broker server 之间建立“逻辑上的连接(Channel)”
+>
+> 这几个模块的Channel彼此之间是相互不影响的，但这几个Channel复用了同一个TCP连接
+
 ```java
 public class Channel {
 
@@ -4906,8 +4926,8 @@ ConcurrentHashMap<>();
 
 在 Connection 中, 实现下列方法
 
-// 读取响应应该在另外一个单独的线程中完成.
 ```java
+// 读取响应应该在另外一个单独的线程中完成.
 public void writeRequest(Request request) throws IOException {
 
     dataOutputStream.writeInt(request.getType());

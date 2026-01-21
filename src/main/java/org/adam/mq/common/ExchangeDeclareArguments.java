@@ -7,7 +7,7 @@ import java.util.Map;
 
 public class ExchangeDeclareArguments extends BasicArguments implements Serializable {
     private String exchangeName; // 交换机名称
-    private String exchangeType; // 交换机类型
+    private ExchangeType exchangeType; // 交换机类型
     private boolean durable; // 是否持久化
     private boolean autoDelete; // 是否自动删除
     private Map<String, Object> arguments; // 其他参数
@@ -32,7 +32,7 @@ public class ExchangeDeclareArguments extends BasicArguments implements Serializ
         return exchangeType;
     }
 
-    public void setExchangeType(String exchangeType) {
+    public void setExchangeType(ExchangeType exchangeType) {
         this.exchangeType = exchangeType;
     }
 
