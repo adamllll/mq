@@ -39,3 +39,6 @@ build/
 .kilocode/
 .spec-workflow/
 .serena/
+
+### Documentation ###
+docs/

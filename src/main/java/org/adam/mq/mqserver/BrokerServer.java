@@ -7,6 +7,7 @@ import java.io.*;
 import java.io.EOFException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -38,17 +39,22 @@ public class BrokerServer {
     public void start() throws IOException {
         System.out.println("[BrokerServer] 启动，等待客户端连接...");
         executorService = Executors.newCachedThreadPool(); // 使用缓存线程池
-        while (isRunning) {
-            Socket clientSocket = serverSocket.accept();
-            // 把处理连接的逻辑交给线程池来处理
-            executorService.submit(() -> {
-                try {
-                    processConnection(clientSocket);
-                } catch (ClassNotFoundException e) {
-                    throw new RuntimeException(e);
-                }
-            });
+        try {
+            while (isRunning) {
+                Socket clientSocket = serverSocket.accept();
+                // 把处理连接的逻辑交给线程池来处理
+                executorService.submit(() -> {
+                    try {
+                        processConnection(clientSocket);
+                    } catch (ClassNotFoundException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
+            }
+        } catch (SocketException e) {
+            System.out.println("[BrokerServer] 服务器已关闭，停止接受新的连接。");
         }
+
     }
     // 一般来说，停止服务器是一个优雅关闭的过程？ kill掉对应进程就行~
     public void stop() throws IOException {
@@ -148,7 +154,7 @@ public class BrokerServer {
                     arguments.getArguments());
         } else if (request.getType() == 0x4) {
             // 销毁交换机
-            ExchangeDeclareArguments arguments = (ExchangeDeclareArguments) basicArguments;
+            ExchangeDeleteArguments arguments = (ExchangeDeleteArguments) basicArguments;
             sucess = virtualHost.exchangeDelete(arguments.getExchangeName());
         } else if (request.getType() == 0x5) {
             // 创建队列
@@ -161,7 +167,7 @@ public class BrokerServer {
                     arguments.getArguments());
         } else if (request.getType() == 0x6) {
             // 销毁队列
-            QueueDeclareArguments arguments = (QueueDeclareArguments) basicArguments;
+            QueueDeleteArguments arguments = (QueueDeleteArguments) basicArguments;
             sucess = virtualHost.queueDelete(arguments.getQueueName());
         } else if (request.getType() == 0x7) {
             // 创建绑定
@@ -169,7 +175,7 @@ public class BrokerServer {
             sucess = virtualHost.queueBind(arguments.getQueueName(), arguments.getExchangeName(),arguments.getBindingKey());
         } else if (request.getType() == 0x8) {
             // 销毁绑定
-            QueueBindArguments arguments = (QueueBindArguments) basicArguments;
+            QueueUnBindArguments arguments = (QueueUnBindArguments) basicArguments;
             sucess = virtualHost.queueUnbind(arguments.getQueueName(), arguments.getExchangeName());
         } else if (request.getType() == 0x9) {
             // 发布消息
@@ -210,7 +216,7 @@ public class BrokerServer {
                             response.setType(0xc); // 消息推送的响应类型 0xc表示消费者给客户端推送的消息
                             // response的 payload 是 SubscribeReturns 对象
                             response.setLength(payload.length);
-                            request.setPayload(payload);
+                            response.setPayload(payload);
                             // 3. 把响应写回到客户端 注意此处的DataOutputStream 不能关闭，否则会关闭 socket 连接
                             DataOutputStream dataOutputStream = new DataOutputStream(clinetSocket.getOutputStream());
                             writeResponse(dataOutputStream, response);

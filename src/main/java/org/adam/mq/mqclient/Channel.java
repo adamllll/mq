@@ -62,6 +62,16 @@ public class Channel {
         return basicReturns;
     }
 
+    // 把服务器响应放入到 basicReturnsMap 中
+    public void putReturns(BasicReturns basicReturns) {
+        basicReturnsMap.put(basicReturns.getRid(), basicReturns);
+        // 唤醒等待的线程
+        synchronized (this) {
+            // 唤醒全部等待的线程
+            notifyAll();
+        }
+    }
+
     private String generateRid() {
         return "R" + UUID.randomUUID().toString();
     }
@@ -265,6 +275,7 @@ public class Channel {
         arguments.setRid(generateRid());
         arguments.setQueueName(queueName);
         arguments.setAutoAck(autoAck);
+        arguments.setConsumerTag(channelId);
         byte[] payload = BinaryTool.toBytes(arguments);
 
         // 构造 Request 对象
@@ -300,4 +311,38 @@ public class Channel {
         BasicReturns basicReturns = waitResult(basicAckArguments.getRid());
         return basicReturns.isSuccess();
     }
+
+    public String getChannelId() {
+        return channelId;
+    }
+
+    public void setChannelId(String channelId) {
+        this.channelId = channelId;
+    }
+
+    public Connection getConnection() {
+        return connection;
+    }
+
+    public void setConnection(Connection connection) {
+        this.connection = connection;
+    }
+
+    public ConcurrentHashMap<String, BasicReturns> getBasicReturnsMap() {
+        return basicReturnsMap;
+    }
+
+    public void setBasicReturnsMap(ConcurrentHashMap<String, BasicReturns> basicReturnsMap) {
+        this.basicReturnsMap = basicReturnsMap;
+    }
+
+    public Consumer getConsumer() {
+        return consumer;
+    }
+
+    public void setConsumer(Consumer consumer) {
+        this.consumer = consumer;
+    }
+
+
 }

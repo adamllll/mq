@@ -1,5 +1,7 @@
 package org.adam.mq.mqclient;
 
+import java.io.IOException;
+
 public class ConnectionFactory {
     // broker server 的ip地址
     private String host;
@@ -10,7 +12,7 @@ public class ConnectionFactory {
 //    private String virtualHostName;
 //    private String userName;
 //    private String password;
-    public Connection newConnection() {
+    public Connection newConnection() throws IOException {
         Connection connection = new Connection(host, port);
         return connection;
     }

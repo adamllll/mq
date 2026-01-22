@@ -1,12 +1,14 @@
 package org.adam.mq.mqclient;
 
-import org.adam.mq.common.Request;
-import org.adam.mq.common.Response;
+import org.adam.mq.common.*;
 
 import java.io.*;
 import java.net.Socket;
+import java.net.SocketException;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class Connection {
     private Socket socket = null;
@@ -18,12 +20,73 @@ public class Connection {
     private DataInputStream dataInputStream;
     private DataOutputStream dataOutputStream;
 
+    private ExecutorService callbackPool = null;
+
     public Connection(String host, int port) throws IOException {
         socket = new Socket(host, port);
         inputStream = socket.getInputStream();
         outputStream = socket.getOutputStream();
         dataInputStream = new DataInputStream(inputStream);
         dataOutputStream = new DataOutputStream(outputStream);
+
+        callbackPool = Executors.newFixedThreadPool(4);
+
+        // 创建一个扫描线程，不断地从socket中读取响应数据，再把响应数据分发给各个Channel
+        Thread responseReaderThread = new Thread(() -> {
+            while (!socket.isClosed()) {
+                try {
+                    Response response = readResponse();
+                    dispatchResponse(response);
+                } catch (SocketException e) {
+                    // 连接正常断开，此时异常直接忽略
+                    System.out.println("[Connection] 连接已关闭，停止读取响应线程");
+                } catch (IOException | ClassNotFoundException | MqException e) {
+                    System.out.println("[Connection] 读取响应时发生IO异常，停止读取响应线程");
+                    e.printStackTrace();
+                }
+            }
+        });
+        responseReaderThread.start();
+    }
+    // 关闭连接,释放资源
+    public void close() throws IOException {
+        socket.close();
+        callbackPool.shutdown();
+        channelMap.clear();
+        inputStream.close();
+        outputStream.close();
+        System.out.println("[Connection] 连接已关闭");
+    }
+
+    // 使用这个方法把响应分发给各个 Channel
+    private void dispatchResponse(Response response) throws IOException, ClassNotFoundException, MqException {
+        if (response.getType() == 0xc) {
+            // 服务器推送来的数据
+            SubscribeReturns subscribeReturns =(SubscribeReturns) BinaryTool.fromBytes(response.getPayload());
+            // 找到对应的 Channel 来执行对应的回调方法
+            Channel channel = channelMap.get(subscribeReturns.getChannelId());
+            if (channel == null) {
+                throw new MqException("[Connection] 找不到对应的 Channel，channelId=" + subscribeReturns.getChannelId());
+            }
+            callbackPool.submit(() -> {
+                try {
+                    channel.getConsumer().handleDelivery(subscribeReturns.getConsumerTag(), subscribeReturns.getBasicProperties(),
+                            subscribeReturns.getBody());
+                } catch (MqException | IOException e) {
+                    System.out.println("[Connection] 处理订阅消息时发生异常，channelId=" + subscribeReturns.getChannelId());
+                    e.printStackTrace();
+                }
+            });
+        }else {
+            // 针对控制请求的响应，需要找到对应的 Channel 来处理
+            BasicReturns basicReturns = (BasicReturns) BinaryTool.fromBytes(response.getPayload());
+            // 把结果放入对应 Channel 的 Hash表中
+            Channel channel = channelMap.get(basicReturns.getChannelId());
+            if (channel == null) {
+                throw new MqException("[Connection] 找不到对应的 Channel，channelId=" + basicReturns.getChannelId());
+            }
+            channel.putReturns(basicReturns);
+        }
     }
 
     // 发送请求
