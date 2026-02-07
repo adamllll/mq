@@ -42,3 +42,8 @@ build/
 
 ### Documentation ###
 docs/
+
+### Local backups & runtime data ###
+backup_commit_messages.txt
+backup_notes/
+data/
