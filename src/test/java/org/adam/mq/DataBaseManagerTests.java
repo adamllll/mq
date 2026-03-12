@@ -10,13 +10,10 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.SpringApplication;
-import org.springframework.boot.test.context.SpringBootTest;
 
 import java.util.List;
 
-// 加上这个注解表示这是一个Spring Boot的测试类
 // 设计单元测试，要求单元测试用例之间是相互独立的，不会互相干扰
-@SpringBootTest
 public class DataBaseManagerTests {
     private DataBaseManager dbManager = new DataBaseManager();
 
@@ -26,6 +23,8 @@ public class DataBaseManagerTests {
     // 使用这个方法，来执行准备工作，每个用例执行前，都需要调用这个方法
     @BeforeEach
     public void setUp() {
+        // 清理上一次异常中断留下的数据，确保当前用例从空库开始
+        dbManager.deleteDB();
         // 由于init()中需要通过 context对象拿到 metaMapper实例
         // 所以就需要先把context对象初始化好
         MqApplication.context = SpringApplication.run(MqApplication.class);
@@ -40,6 +39,7 @@ public class DataBaseManagerTests {
         // 如果 meta.db文件正在被使用，那么就无法删除这个文件
         // 另一方面，获取 context 操作会占用8080 端口，此处的close也是释放端口的操作
         MqApplication.context.close();
+        MqApplication.context = null;
         dbManager.deleteDB();
     }
     @Test

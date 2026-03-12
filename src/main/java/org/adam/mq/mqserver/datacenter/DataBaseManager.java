@@ -38,20 +38,33 @@ public class DataBaseManager {
     }
 
     public void deleteDB() {
-        File file = new File("./data/meta.db");
-        if (file.exists()) {
-            file.delete();
-            System.out.println("[DBManager] 数据库文件删除成功。");
-        } else {
-            System.out.println("[DBManager] 数据库文件不存在。");
-        }
         File dataDir = new File("./data");
-        if (dataDir.exists()) {
-            dataDir.delete(); // delete() 只能删除空目录
-            System.out.println("[DBManager] 数据目录删除成功。");
-        }else  {
+        if (!dataDir.exists()) {
             System.out.println("[DBManager] 数据目录不存在。");
+            return;
         }
+        if (deleteRecursively(dataDir)) {
+            System.out.println("[DBManager] 数据目录删除成功。");
+        } else {
+            System.out.println("[DBManager] 数据目录删除失败，请检查文件是否仍被占用。");
+        }
+    }
+
+    private boolean deleteRecursively(File file) {
+        if (!file.exists()) {
+            return true;
+        }
+        if (file.isDirectory()) {
+            File[] children = file.listFiles();
+            if (children != null) {
+                for (File child : children) {
+                    if (!deleteRecursively(child)) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return file.delete();
     }
 
     private boolean checkDBExists() {
