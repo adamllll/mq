@@ -2,164 +2,102 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-A lightweight message queue implementation inspired by RabbitMQ, built with Java and Spring Boot.
+A lightweight RabbitMQ-inspired message queue implemented with Java 17 and Spring Boot. The Spring Boot process initializes the application context and then starts a custom TCP broker on port `9090`.
 
-## Tech Stack
+## Overview
 
-- **Java**: 17
-- **Framework**: Spring Boot 3.5.8
-- **Persistence**: MyBatis + SQLite
-- **Build Tool**: Maven
+- Exchange types: `DIRECT`, `FANOUT`, `TOPIC`
+- Client-side API: `ConnectionFactory`, `Connection`, `Channel`
+- Core operations: declare/delete exchange and queue, bind/unbind, publish, consume, ack
+- Storage model: in-memory fast path + SQLite metadata + message files on disk
+- Demo entry points: `org.adam.mq.demo.DemoConsumer` and `org.adam.mq.demo.DemoProducer`
 
-## Architecture Overview
+## Project Layout
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      Client SDK                              │
-│              (Connection / Channel)                          │
-└─────────────────────┬───────────────────────────────────────┘
-                      │ TCP (Binary Protocol)
-┌─────────────────────▼───────────────────────────────────────┐
-│                    BrokerServer                              │
-│         (Request Parsing / Session Management)               │
-└─────────────────────┬───────────────────────────────────────┘
-                      │
-┌─────────────────────▼───────────────────────────────────────┐
-│                    VirtualHost                               │
-│              (Core Business Logic)                           │
-├──────────────┬──────────────┬───────────────────────────────┤
-│    Router    │ ConsumerMgr  │      Storage Engine           │
-│  (Routing)   │  (Push Msg)  │  ┌─────────┬─────────────┐   │
-│              │              │  │ Memory  │    Disk     │   │
-│              │              │  │ (RAM)   │(SQLite+File)│   │
-└──────────────┴──────────────┴──┴─────────┴─────────────┴───┘
+```text
+src/main/java/org/adam/mq/
+  common/        shared DTOs, request/response models, serialization helpers
+  demo/          runnable producer and consumer demos
+  mqclient/      client SDK (ConnectionFactory / Connection / Channel)
+  mqserver/      broker, routing, consumer manager, persistence
+src/main/resources/
+  application.yaml
+  mapper/MetaMapper.xml
+src/test/java/org/adam/mq/
+  routing, storage, virtual host, and client tests
+docs/
+  RESTART_GUIDE.md
+  notes_fixed.md
+  course.pdf
+data/
+  runtime SQLite metadata and queue message files
 ```
 
-## Project Structure
+## Runtime Notes
 
-```
-mq/
-├── src/main/java/org/adam/mq/
-│   ├── common/                    # Common utilities
-│   │   ├── Request.java          # Network request object
-│   │   ├── Response.java         # Network response object
-│   │   ├── Consumer.java         # Consumer callback interface
-│   │   ├── BinaryTool.java       # Serialization utilities
-│   │   └── *Arguments.java       # API parameter classes
-│   │
-│   ├── mqserver/                  # MQ Server core
-│   │   ├── BrokerServer.java     # TCP server, protocol parsing
-│   │   ├── VirtualHost.java      # Virtual host, core API
-│   │   │
-│   │   ├── core/                 # Domain models
-│   │   │   ├── Exchange.java     # Exchange entity
-│   │   │   ├── MSGQueue.java     # Queue entity
-│   │   │   ├── Binding.java      # Binding relationship
-│   │   │   ├── Message.java      # Message entity
-│   │   │   ├── Router.java       # Routing engine
-│   │   │   └── ConsumerManager.java  # Consumer management
-│   │   │
-│   │   ├── datacenter/           # Storage layer
-│   │   │   ├── MemoryDataCenter.java   # In-memory storage
-│   │   │   ├── DiskDataCenter.java     # Disk persistence
-│   │   │   ├── DataBaseManager.java    # SQLite management
-│   │   │   └── MessageFileManager.java # Message file storage
-│   │   │
-│   │   └── mapper/               # MyBatis mappers
-│   │       └── MetaMapper.java   # Metadata persistence
-│   │
-│   └── mqclient/                  # Client SDK
-│       ├── Connection.java       # Connection management
-│       └── Channel.java          # Channel operations
-│
-├── docs/                          # Documentation
-│   ├── RESTART_GUIDE.md          # Learning guide
-│   ├── notes_fixed.md            # Study notes
-│   └── 板书/                      # Course diagrams
-│
-└── pom.xml                        # Maven configuration
-```
-
-## Implemented Features
-
-### Core Features
-
-| Feature | Status | Description |
-|---------|--------|-------------|
-| Exchange Management | ✅ | Create/Delete exchanges (Direct, Fanout, Topic) |
-| Queue Management | ✅ | Create/Delete queues with durability options |
-| Binding Management | ✅ | Bindind/Unbinding queues to exchanges |
-| Message Publishing | ✅ | Publish messages with routing keys |
-| Message Subscription | ✅ | Subscribe to queues with push model |
-| Message ACK | ✅ | Manual/Auto acknowledgment mechanism |
-
-### Exchange Types
-
-| Type | Routing Rule | Use Case |
-|------|--------------|----------|
-| **Direct** | Exact match RoutingKey == BindingKey | Point-to-point messaging |
-| **Fanout** | Broadcast to all bound queues | System notifications |
-| **Topic** | Pattern matching with `*` and `#` wildcards | Flexible subscription |
-
-### Network Protocol
-
-The server implements a binary protocol with 12 operation types:
-
-| Code | Operation | Description |
-|------|-----------|-------------|
-| 0x1 | createChannel | Create a new channel |
-| 0x2 | closeChannel | Close a channel |
-| 0x3 | exchangeDeclare | Declare an exchange |
-| 0x4 | exchangeDelete | Delete an exchange |
-| 0x5 | queueDeclare | Declare a queue |
-| 0x6 | queueDelete | Delete a queue |
-| 0x7 | queueBind | Bind queue to exchange |
-| 0x8 | queueUnbind | Unbind queue from exchange |
-| 0x9 | basicPublish | Publish a message |
-| 0xa | basicConsume | Subscribe to a queue |
-| 0xb | basicAck | Acknowledge a message |
-| 0xc | (Response) | Server push to consumer |
-
-### Storage Architecture
-
-- **Memory Layer**: ConcurrentHashMap for high-performance read/write
-- **Disk Layer**: SQLite for metadata + Binary files for message bodies
-- **GC Mechanism**: Copy-based garbage collection for message files
+- Broker TCP port: `9090`
+- SQLite metadata file: `data/meta.db`
+- Queue message files: `data/<queue-name>/`
+- Current implementation uses a single virtual host: `DefaultVHost`
 
 ## Quick Start
 
-### Prerequisites
+### Requirement
 
-- JDK 17 or higher
-- Maven 3.6+
+- JDK 17+
+
+The repository already includes the Maven Wrapper, so a separate Maven installation is not required.
 
 ### Build
 
-```bash
-# Build the project
-./mvnw clean package
+Windows PowerShell:
 
-# Run tests
-./mvnw test
+```powershell
+.\mvnw.cmd clean package -DskipTests
 ```
 
-### Run
+macOS / Linux:
 
 ```bash
-# Run the application
+./mvnw clean package -DskipTests
+```
+
+### Start The Broker
+
+Windows PowerShell:
+
+```powershell
+.\mvnw.cmd spring-boot:run
+```
+
+macOS / Linux:
+
+```bash
 ./mvnw spring-boot:run
 ```
 
+The repository also contains tests under `src/test/java/org/adam/mq`, but they are not required to start the broker.
+
+### Run The Demo
+
+1. Start the broker first.
+2. Run `org.adam.mq.demo.DemoConsumer`.
+3. Run `org.adam.mq.demo.DemoProducer`.
+
+The demo connects to `127.0.0.1:9090` and uses `demo_exchange` plus `demo_queue`.
+
+## Limitations
+
+- No authentication support yet
+- No multi-vhost support yet
+- No REST or admin UI layer in this repository
+
 ## Documentation
 
-- [Learning Guide](docs/RESTART_GUIDE.md) - Comprehensive study guide with architecture diagrams
-- [Study Notes](docs/notes_fixed.md) - Detailed implementation notes
-- [Course Material](docs/course.pdf) - Original course PDF
+- [Learning Guide](docs/RESTART_GUIDE.md) - architecture walkthrough and study notes
+- [Fixed Notes](docs/notes_fixed.md) - consolidated implementation notes
+- [Course Material](docs/course.pdf) - original course PDF
 
 ## License
 
-Educational project - free to use and modify.
-
----
-
-**Note**: This is a learning project created for educational purposes, implementing core message queue concepts inspired by RabbitMQ.
+Educational project. Use and modify it freely for learning purposes.
