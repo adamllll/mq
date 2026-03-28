@@ -3,169 +3,125 @@ package org.adam.mq.mqserver.core;
 import org.adam.mq.common.MqException;
 
 /**
- * 使用这个类来实现交换机的转发规则
- * 同时也借助这个类来验证 bindingkey是否合法
+ * 用于实现交换机转发规则，并校验 bindingKey / routingKey 的合法性。
  */
 public class Router {
-    // bindingkey 构造规则
-    // 1. 数字，字母，下划线 2. 使用 . 分割成若干部分 3. 支持通配符 * 和 #
+    // bindingKey 规则：
+    // 1. 允许字母、数字、下划线
+    // 2. 使用 . 分割成多个 token
+    // 3. 仅支持独立 token 形式的 * 和 #
     public boolean checkBindingKey(String bindingKey) {
         if (bindingKey.length() == 0) {
-            // 空字符串也是合法情况，在使用DIRCT / FANOUT交换机的时候，bindingkey用不上可以为空
+            // DIRECT / FANOUT 场景下 bindingKey 可以为空
             return true;
         }
-        // 检查字符串不能存在非法字符
+
         for (int i = 0; i < bindingKey.length(); i++) {
             char ch = bindingKey.charAt(i);
-            // 判定该字符是否是大写字母
             if (ch >= 'A' && ch <= 'Z') {
                 continue;
             }
-            // 判定该字符是否是小写字母
             if (ch >= 'a' && ch <= 'z') {
                 continue;
             }
-            // 判定该字符是否是数字
             if (ch >= '0' && ch <= '9') {
                 continue;
             }
-            // 判定该字符是否是 _ . * #
             if (ch == '_' || ch == '.' || ch == '*' || ch == '#') {
                 continue;
             }
-            // 该字符不是上述任何一种合法情况，直接返回false
             return false;
         }
-        // 检查 * 和 # 是否是独立的部分
-        // aaa.*.bbb 是合法的，aaa*bbb是不合法的
+
         String[] words = bindingKey.split("\\.");
         for (String word : words) {
-            if (word.length() == 0) {
-                // 检查 word 长度 > 1并且包含了 * 或 #。就是非法格式
-                if (word.length() > 1 && (word.contains("*") || word.contains("#"))) {
-                    return false;
-                }
+            // * / # 只能作为独立 token 出现，例如 aaa*bbb 或 #suffix 都应视为非法
+            if (word.length() > 1 && (word.contains("*") || word.contains("#"))) {
+                return false;
             }
         }
-        // 约定一下，通配符之间的相邻关系(人为(暂时)约定的)
-        // 前三种实现匹配的逻辑比较繁琐而且功能性提升不大，所以直接禁止使用
-        // 1. aaa.#.#.bbb 非法
-        // 2. aaa.#.*.bbb 非法
-        // 3. aaa.*.#.bbb 非法
-        // 4. aaa.*.*.bbb 合法
+
+        // 限制相邻通配符组合，避免引入当前实现未支持的复杂匹配语义
         for (int i = 0; i < words.length - 1; i++) {
-            // 判定是否是连续两个 #
             if (words[i].equals("#") && words[i + 1].equals("#")) {
                 return false;
             }
-            // 判定是否是 # 和 * 相邻
             if (words[i].equals("#") && words[i + 1].equals("*")) {
                 return false;
             }
-            // 判定是否是 * 和 # 相邻
             if (words[i].equals("*") && words[i + 1].equals("#")) {
                 return false;
             }
         }
-        // 把每个字符都检查过了，都是合法的，返回true
+
         return true;
     }
-    // routingkey 构造规则
-    // 1. 数字，字母，下划线 2. 使用 . 分割成若干部分
+
+    // routingKey 规则：
+    // 1. 允许字母、数字、下划线
+    // 2. 使用 . 分割成多个 token
     public boolean checkRoutingKey(String routingKey) {
         if (routingKey.length() == 0) {
-            // 空字符串合法的，比如在使用fanout交换机的时候，routingkey用不上可以为空
+            // FANOUT 场景下 routingKey 可以为空
             return true;
         }
+
         for (int i = 0; i < routingKey.length(); i++) {
             char ch = routingKey.charAt(i);
-            // 判定该字符是否是大写字母
             if (ch >= 'A' && ch <= 'Z') {
                 continue;
             }
-            // 判定该字符是否是小写字母
             if (ch >= 'a' && ch <= 'z') {
                 continue;
             }
-            // 判定该字符是否是数字
             if (ch >= '0' && ch <= '9') {
                 continue;
             }
-            // 判定该字符是否是 _ 或 .
             if (ch == '_' || ch == '.') {
                 continue;
             }
-            // 该字符不是上述任何一种合法情况，直接返回false
             return false;
         }
-        // 把每个字符都检查过了，都是合法的，返回true
+
         return true;
     }
-    // 判定该消息是否可以转发给这个绑定对应的队列
+
+    // 判定消息是否可以转发给当前绑定对应的队列
     public boolean route(ExchangeType exchangeType, Binding binding, Message message) throws MqException {
-        // 根据不同的交换机类型，使用不同的路由规则
         if (exchangeType == ExchangeType.FANOUT) {
-            // FANOUT类型的交换机，直接转发
             return true;
-        }else if (exchangeType == ExchangeType.TOPIC) {
-            // TOPIC交换机单独使用一个方法来实现
+        } else if (exchangeType == ExchangeType.TOPIC) {
             return routeTopic(binding, message);
-        }else {
-            // 其他情况应该是不存在的
-            throw new MqException("[Router] 交换机类型不存在！exchangeType: " + exchangeType);
+        } else {
+            throw new MqException("[Router] 交换机类型不存在，exchangeType: " + exchangeType);
         }
     }
-        // [测试用例]
-        // binding key          routing key         result
-        // aaa                  aaa                 true
-        // aaa.bbb              aaa.bbb             true
-        // aaa.bbb              aaa.bbb.ccc         false
-        // aaa.bbb              aaa.ccc             false
-        // aaa.bbb.ccc          aaa.bbb.ccc         true
-        // aaa.*                aaa.bbb             true
-        // aaa.*.bbb            aaa.bbb.ccc         false
-        // *.aaa.bbb            aaa.bbb             false
-        // #                    aaa.bbb.ccc         true
-        // aaa.#                aaa.bbb             true
-        // aaa.#                aaa.bbb.ccc         true
-        // aaa.#.ccc            aaa.ccc             true
-        // aaa.#.ccc            aaa.bbb.ccc         true
-        // aaa.#.ccc            aaa.aaa.bbb.ccc     true
-        // #.ccc                ccc                 true
-        // #.ccc                aaa.bbb.ccc         true
+
     private boolean routeTopic(Binding binding, Message message) {
-        // 先把这两个key进行切分
         String[] bindingTokens = binding.getBindingKey().split("\\.");
         String[] routingTokens = message.getRoutingKey().split("\\.");
-        // 引入两个下标，指向上述两个数组，初始情况下都为0
+
         int bindingIndex = 0;
         int routingIndex = 0;
-        // 此处使用while更合适，每次循环下标不一定就是+1
         while (bindingIndex < bindingTokens.length && routingIndex < routingTokens.length) {
             if (bindingTokens[bindingIndex].equals("*")) {
-                // [情况2]遇到*直接进入下一个，表示匹配任意单词
                 bindingIndex++;
                 routingIndex++;
                 continue;
-            }else if (bindingTokens[bindingIndex].equals("#")) {
-                // 遇到#，需要先判定有没有下一个位置
+            } else if (bindingTokens[bindingIndex].equals("#")) {
                 bindingIndex++;
                 if (bindingIndex == bindingTokens.length) {
-                    // [情况3]#在最后一个位置，表示匹配剩余所有单词，直接返回true
                     return true;
                 }
-                // [情况4]#不是最后一个位置，需要继续匹配下一个单词
-                // findNextMatch方法用于在routingTokens中找到下一个和bindingTokens[bindingIndex]匹配的位置,没找到返回-1
+
                 routingIndex = findNextMatch(routingTokens, routingIndex, bindingTokens[bindingIndex]);
                 if (routingIndex == -1) {
-                    // 没有找到匹配的位置，直接返回false
                     return false;
                 }
-                // 找到了匹配的位置，继续进行下一轮匹配
+
                 bindingIndex++;
                 routingIndex++;
-            }else {
-                // 普通字符串，要求两边的内容是一样的
+            } else {
                 if (!bindingTokens[bindingIndex].equals(routingTokens[routingIndex])) {
                     return false;
                 }
@@ -173,15 +129,10 @@ public class Router {
                 routingIndex++;
             }
         }
-        // [情况5]判定是否是双方同时到达末尾
-        // 比如aaa.bbb.ccc 和 aaa.bbb 是匹配失败的
-        if (bindingIndex == bindingTokens.length && routingIndex == routingTokens.length) {
-            return true;
-        }
-        return false;
+
+        return bindingIndex == bindingTokens.length && routingIndex == routingTokens.length;
     }
 
-    // 在routingTokens中找到下一个和bindingTokens[bindingIdex]匹配的位置,没找到返回-1
     private int findNextMatch(String[] routingTokens, int routingIndex, String bindingToken) {
         for (int i = routingIndex; i < routingTokens.length; i++) {
             if (routingTokens[i].equals(bindingToken)) {

@@ -150,4 +150,23 @@ public class RouterTests {
         message.setRoutingKey("aaa.bbb.ccc");
         Assertions.assertTrue(router.route(ExchangeType.TOPIC, binding, message));
     }
+
+    @Test
+    public void testCheckBindingKeyRejectsInlineWildcardToken() {
+        Assertions.assertFalse(router.checkBindingKey("order.a*"));
+        Assertions.assertFalse(router.checkBindingKey("order.#suffix"));
+    }
+
+    @Test
+    public void testCheckBindingKeyRejectsAdjacentHashAndStarTokens() {
+        Assertions.assertFalse(router.checkBindingKey("order.#.*.created"));
+        Assertions.assertFalse(router.checkBindingKey("order.*.#.created"));
+    }
+
+    @Test
+    public void testRouteThrowsWhenExchangeTypeIsNull() {
+        binding.setBindingKey("order.created");
+        message.setRoutingKey("order.created");
+        Assertions.assertThrows(MqException.class, () -> router.route(null, binding, message));
+    }
 }
