@@ -15,6 +15,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class MqClientTests {
     private BrokerServer brokerServer;
@@ -41,6 +44,7 @@ public class MqClientTests {
         }
         if (serverThread != null && serverThread.isAlive()) {
             serverThread.interrupt();
+            TestRuntimeSupport.awaitThreadStopped(serverThread, 1000);
         }
         TestRuntimeSupport.stopApplicationContext();
         TestRuntimeSupport.deleteDataDirectory();
@@ -153,15 +157,20 @@ public class MqClientTests {
         success = channel.basicPublish("test_exchange", "test_queue", null, requestBody);
         Assertions.assertTrue(success);
 
+        CountDownLatch latch = new CountDownLatch(1);
+        AtomicReference<byte[]> receivedBody = new AtomicReference<>();
+
         success = channel.basicConsume("test_queue", true, new Consumer() {
             @Override
             public void handleDelivery(String consumerTag, BasicProperties properties, byte[] body) {
-                Assertions.assertArrayEquals(requestBody, body);
+                receivedBody.set(body);
+                latch.countDown();
             }
         });
         Assertions.assertTrue(success);
 
-        Thread.sleep(500);
+        Assertions.assertTrue(latch.await(3, TimeUnit.SECONDS), "消息未在超时内到达 consumer");
+        Assertions.assertArrayEquals(requestBody, receivedBody.get());
 
         channel.queueUnbind("test_queue", "test_exchange");
         channel.queueDelete("test_queue");

@@ -1,7 +1,7 @@
-﻿# MQ 项目简历亮点
+# MQ 项目简历亮点
 
-- 为自研 Java MQ 项目补齐分层自动化测试，覆盖路由匹配、持久化存储、客户端链路与 ACK 核心路径，并以 Maven 持续回归验证结果。
-- 修复 `bindingKey` 内联通配符校验漏洞，补充非法 `routingKey`、发布失败、ACK 失败和 durable ACK 清理等负路径回归，提升消息路由相关测试完备度。
-- 抽取统一测试运行时支持类，稳定 Broker 启动、Spring 上下文复用、端口就绪等待和 `./data` 清理流程，降低 SQLite 与消息文件互相污染风险。
-- 接入 JaCoCo 并沉淀覆盖率摘要、测试资产盘点、正式测试报告与面试问答，形成“执行结果 + 质量评估 + 风险说明”的完整测试资产闭环。
-- 编写 Java 性能 smoke 脚本，完成单线程、多线程发布吞吐与 publish-consume-ACK 场景验证，为面试中的性能分析与取舍说明提供真实数据。
+- 为自研 Java MQ 系统设计并落地 77 个自动化回归用例（8 个测试类）与 3 个手动 gated 性能 smoke 场景，覆盖路由、持久化、客户端 TCP 链路和 ACK 核心路径。
+- 引入 JaCoCo 与白名单统计口径，建立可追溯测试资产，回归套件行覆盖率达到 84.60%（1242/1468），并明确定位剩余盲区到网络异常和线程中断分支。
+- 发现并推动修复 `bindingKey` 通配符校验漏洞，补齐非法 `bindingKey` / `routingKey`、缺失 exchange、缺失消息 ACK、durable ACK 清理等负路径回归。
+- 抽象 `TestRuntimeSupport` 管理 Spring 上下文、Broker 生命周期和数据目录清理，异步场景采用 CountDownLatch + 主线程断言 + 条件稳定等待，提升测试稳定性与可重复性。
+- 编写 Java 性能 smoke 脚本，得到单线程 1437.55 TPS、4 线程 4977.18 TPS、publish-consume-ack 平均 4.28 ms 的基线结果，为性能分析与面试答辩提供依据。
