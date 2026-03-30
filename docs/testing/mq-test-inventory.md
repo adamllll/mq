@@ -42,5 +42,5 @@
 ## 5. 说明
 
 - 本文档只盘点显式纳入回归范围的白名单测试类，避免历史残留报告或手动性能测试污染统计结果。
-- 覆盖率结论见 `docs/testing/2026-03-27-mq-coverage-summary.md`。
+- 覆盖率结论见 `docs/testing/mq-coverage-summary.md`。
 - 性能结果以主报告第 9 节为准；性能 smoke 独立执行，不能直接与 `clean test` 的覆盖率结果混算。
